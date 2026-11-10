@@ -1,0 +1,7 @@
+Server starting up...
+{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-03-26","serverInfo":{"name":"test","version":"1.0"}}}
+[DEBUG] tool handler called
+{"jsonrpc":"2.0","id":2,"result":{"tools":[]}}
+{"some":"data","not":"jsonrpc"}
+{"jsonrpc":"2.0","id":3,"result":{}}
+shutdown complete

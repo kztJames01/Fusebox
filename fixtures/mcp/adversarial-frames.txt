@@ -1,0 +1,6 @@
+not json at all
+{"jsonrpc":"1.0","id":1,"method":"test"}
+[{"jsonrpc":"2.0","id":1,"method":"batch"}]
+{"jsonrpc":"2.0","id":1}
+partial json {
+{"jsonrpc":"2.0","key":"value"}
