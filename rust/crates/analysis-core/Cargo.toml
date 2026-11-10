@@ -1,0 +1,17 @@
+[package]
+name = "analysis-core"
+version.workspace = true
+edition.workspace = true
+description = "Walk, hash, structural diff and impact ranking (legacy analysis path, not the enforcement core)"
+license.workspace = true
+
+[lib]
+name = "analysis_core"
+path = "src/lib.rs"
+
+[dependencies]
+rayon = "1.11"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+walkdir = "2.5"
