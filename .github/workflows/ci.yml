@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main,version1]
+
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        # node:sqlite is unflagged from Node 22.13.0; the index engine needs it.
+        node-version: [22.x, 24.x]
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run typecheck
+        run: npm run typecheck
+      
+      - name: Run linter
+        run: npm run lint
+      
+      - name: Run tests
+        run: npm run test
+      
+      - name: Build
+        run: npm run build
+
+      - name: Run release checks
+        run: npm run release:check
+
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Check formatting
+        run: cargo fmt --check --manifest-path rust/Cargo.toml
+
+      - name: Run clippy
+        run: cargo clippy --manifest-path rust/Cargo.toml --all-targets -- -D warnings
+
+      - name: Run Rust tests
+        run: cargo test --manifest-path rust/Cargo.toml
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build Rust core
+        run: cargo build --release --manifest-path rust/Cargo.toml
+
+      - name: Run Rust integration tests
+        run: MEMOLOG_REQUIRE_RUST=1 npx vitest run test/rustCore.test.ts
+
+  security-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run security audit
+        run: npm audit --audit-level=high

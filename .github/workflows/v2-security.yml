@@ -1,0 +1,157 @@
+name: V2 Security & Determinism Gates
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main, version2]
+
+jobs:
+  forbidden-strings:
+    name: Security — No Network/LLM/Eval in src/
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Scan for forbidden patterns (network/LLM)
+        run: |
+          echo "Checking for network/LLM patterns in src/..."
+          FAIL=0
+          TARGETS="src"
+
+          check() {
+            local LABEL="$1"
+            local PATTERN="$2"
+            if rg --pcre2 -q "$PATTERN" $TARGETS --glob "*.ts" 2>/dev/null; then
+              echo "❌ FAIL: Found forbidden pattern '$LABEL' in scanned source roots"
+              rg --pcre2 -n "$PATTERN" $TARGETS --glob "*.ts"
+              FAIL=1
+            else
+              echo "✅ PASS: '$LABEL' not found"
+            fi
+          }
+
+          check "fetch()"            '\bfetch\s*\('
+          check "axios"              '\baxios\b'
+          check "api.anthropic"      'api\.anthropic'
+          check "api.openai"         'api\.openai'
+          check "openai.com"         'openai\.com'
+          check "anthropic.com"      'anthropic\.com'
+          check "XMLHttpRequest"     'new XMLHttpRequest\b'
+          check "http.request"       '\bhttp\.request\s*\('
+          check "https.request"      '\bhttps\.request\s*\('
+
+          # node:http is allowed only in the opt-in inbound MCP listener.
+          HITS="$(rg --pcre2 -n --glob '*.ts' 'from[[:space:]]+["'\'']node:(http|https|http2)["'\'']' src || true)"
+          FILTERED="$(printf '%s\n' "$HITS" | grep -v 'src/mcp/http.ts' | grep -v '^$' || true)"
+          if [ -n "$FILTERED" ]; then
+            echo "❌ FAIL: node:http(s) import outside src/mcp/http.ts"
+            echo "$FILTERED"
+            FAIL=1
+          else
+            echo "✅ PASS: node:http is limited to src/mcp/http.ts"
+          fi
+
+          if [ $FAIL -ne 0 ]; then
+            echo ""
+            echo "SECURITY GATE FAILED. Remove forbidden patterns before merging."
+            exit 1
+          fi
+          echo ""
+          echo "Network/LLM string checks passed."
+
+      - name: Scan for forbidden code-execution patterns (vitest)
+        run: npx vitest run test/forbidden-strings.test.ts
+
+  unit-tests:
+    name: Unit & Integration Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Node 18 cannot run Vitest 4 (see ci.yml). Keep 20 and 22.
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  determinism-check:
+    name: Determinism — Same inputs produce identical outputs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Run determinism tests (inference + conflicts + audit)
+        run: npx vitest run test/determinism.test.ts test/runtime-inference.test.ts test/conflict-detection.test.ts test/audit.test.ts test/agent-ui-workflow.test.ts test/cli-extended.test.ts test/hardening.test.ts
+
+      - name: CLI scan determinism (multi-mode)
+        run: |
+          echo "Running two scan passes and diffing output..."
+          mkdir -p /tmp/det-test/src
+          cat > /tmp/det-test/src/example.ts << 'EOF'
+          export function add(a: number, b: number): number { return a + b; }
+          export function subtract(a: number, b: number): number { return a - b; }
+          EOF
+          cat > /tmp/det-test/.memolog.json << 'EOF'
+          {"mode":"brief","languages":["ts"],"exclude":[],"maxDepth":5,"filter":"all","trackTypes":false}
+          EOF
+
+          node dist/index.js scan /tmp/det-test --format json --out /tmp/scan1.json
+          node dist/index.js scan /tmp/det-test --format json --out /tmp/scan2.json
+
+          # Compare entries arrays (exclude generatedAt timestamp)
+          node -e "
+            const a = JSON.parse(require('fs').readFileSync('/tmp/scan1.json','utf8'));
+            const b = JSON.parse(require('fs').readFileSync('/tmp/scan2.json','utf8'));
+            const ea = JSON.stringify(a.entries.sort((x,y)=>x.id.localeCompare(y.id)));
+            const eb = JSON.stringify(b.entries.sort((x,y)=>x.id.localeCompare(y.id)));
+            if(ea !== eb){ console.error('NON-DETERMINISTIC OUTPUT'); process.exit(1); }
+            else { console.log('✅ Output is deterministic'); }
+          "
+
+  perf-smoke:
+    name: Performance — Inference and conflict detection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npx vitest run test/hover-latency.test.ts
+
+  security-audit:
+    name: Security — npm audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm audit --audit-level=high
