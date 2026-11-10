@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/kztJames01/Fusebox/schemas/request.schema.json",
+  "title": "ExecRequest",
+  "description": "A single supervised execution request evaluated against an active IntentContract.",
+  "type": "object",
+  "required": ["protocolVersion", "requestId", "sessionId", "executable", "argv", "cwd"],
+  "additionalProperties": true,
+  "properties": {
+    "protocolVersion": {
+      "type": "string",
+      "const": "1"
+    },
+    "requestId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sessionId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "executable": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Absolute path to the executable. Never a shell string."
+    },
+    "argv": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Arguments (not including the executable itself)."
+    },
+    "cwd": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Working directory. Must be within workspaceRoots."
+    },
+    "envAllowlist": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "timeoutMs": {
+      "type": ["integer", "null"],
+      "minimum": 1
+    },
+    "requestedCapabilities": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    }
+  }
+}

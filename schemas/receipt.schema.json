@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/kztJames01/Fusebox/schemas/receipt.schema.json",
+  "title": "CommandReceipt",
+  "description": "One entry in the hash-chained local execution journal. Rust is the only writer.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "receiptId",
+    "sequence",
+    "recordedAt",
+    "sessionId",
+    "requestId",
+    "requestSummary",
+    "policyDecision",
+    "enforcement",
+    "processOutcome",
+    "previousHash",
+    "recordHash"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1"
+    },
+    "receiptId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "recordedAt": {
+      "type": "string",
+      "description": "ISO-8601 UTC timestamp."
+    },
+    "sessionId": { "type": "string" },
+    "requestId": { "type": "string" },
+    "requestSummary": {
+      "type": "object",
+      "required": ["executableName", "argc", "cwd"],
+      "properties": {
+        "executableName": { "type": "string" },
+        "argc": { "type": "integer", "minimum": 0 },
+        "cwd": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "policyDecision": {
+      "type": "object",
+      "required": ["verdict", "reasonCode", "resolutionStatus", "userActionRequired", "policyHash"],
+      "properties": {
+        "verdict": {
+          "type": "string",
+          "enum": ["allow", "log", "escalate", "deny", "unsupported"]
+        },
+        "ruleId": { "type": ["string", "null"] },
+        "reasonCode": { "type": "string" },
+        "predictedTargets": { "type": "array", "items": { "type": "string" } },
+        "resolutionStatus": {
+          "type": "string",
+          "enum": ["resolved", "partial", "unsupported"]
+        },
+        "requiredBackend": { "type": ["string", "null"] },
+        "userActionRequired": { "type": "boolean" },
+        "policyHash": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "enforcement": {
+      "type": "object",
+      "required": ["backend", "applied"],
+      "properties": {
+        "backend": { "type": "string" },
+        "applied": { "type": "boolean" },
+        "detectedAbi": { "type": ["string", "null"] },
+        "note": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "processOutcome": {
+      "type": "object",
+      "required": ["state"],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": ["denied", "started", "completed", "cancelled", "failed"]
+        },
+        "exitCode": { "type": ["integer", "null"] },
+        "durationMs": { "type": ["integer", "null"], "minimum": 0 },
+        "signal": { "type": ["integer", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "outputDigests": {
+      "type": ["object", "null"],
+      "properties": {
+        "stdoutSha256": { "type": ["string", "null"] },
+        "stderrSha256": { "type": ["string", "null"] },
+        "stdoutTruncated": { "type": "boolean", "default": false },
+        "stderrTruncated": { "type": "boolean", "default": false }
+      },
+      "additionalProperties": true
+    },
+    "previousHash": {
+      "type": "string",
+      "description": "record_hash of the preceding receipt, or empty string for the first record."
+    },
+    "recordHash": {
+      "type": "string",
+      "description": "SHA-256 hex digest of the canonical serialization of this record excluding this field."
+    }
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/kztJames01/Fusebox/schemas/intent.schema.json",
+  "title": "IntentContract",
+  "description": "A bounded session declaration that scopes what the supervised agent is permitted to do.",
+  "type": "object",
+  "required": ["schemaVersion", "sessionId", "workspaceRoots", "networkPolicy", "approvalPolicy"],
+  "additionalProperties": true,
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1",
+      "description": "Schema version. Always '1' for this revision."
+    },
+    "sessionId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque session identifier. Callers generate this."
+    },
+    "workspaceRoots": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Canonical absolute path(s) defining the project boundary."
+    },
+    "readRoots": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [],
+      "description": "Paths where the supervised process may read."
+    },
+    "writeRoots": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [],
+      "description": "Paths where the supervised process may write."
+    },
+    "protectedRoots": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [],
+      "description": "Paths that must never be modified or deleted in this session."
+    },
+    "allowedCommandClasses": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [],
+      "description": "Coarse command-class allowlist (e.g. 'build', 'test', 'format')."
+    },
+    "networkPolicy": {
+      "type": "string",
+      "enum": ["deny_all", "allowlist", "allow"],
+      "description": "Outbound network policy for supervised child processes."
+    },
+    "approvalPolicy": {
+      "type": "string",
+      "enum": ["deny", "escalate", "log"],
+      "description": "How the policy engine reacts to an out-of-scope operation."
+    },
+    "expiresAt": {
+      "type": ["string", "null"],
+      "description": "ISO-8601 UTC expiry. Null means no hard expiry."
+    },
+    "policyHash": {
+      "type": ["string", "null"],
+      "description": "SHA-256 hex digest of the canonical JSON of this contract (excluding this field)."
+    }
+  }
+}
