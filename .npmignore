@@ -1,0 +1,14 @@
+src/
+test/
+.github/
+.kilo/
+Documents/
+.memo-log/
+*.test.ts
+vitest.config.ts
+tsup.config.ts
+tsconfig.json
+eslint.config.*
+.gitignore
+*.tmp
+*.map
