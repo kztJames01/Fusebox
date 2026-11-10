@@ -1,0 +1,20 @@
+{
+  "name": "fusebox-site",
+  "private": true,
+  "version": "1.0.0",
+  "description": "One-page site for fusebox. Not published with the CLI package.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.170.0",
+    "typescript": "5.7.2",
+    "vite": "6.4.1"
+  },
+  "dependencies": {
+    "three": "0.170.0"
+  }
+}

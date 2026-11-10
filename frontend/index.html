@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0a0c0a" />
+    <title>fusebox — pre-execution command mediation and verifiable receipts</title>
+    <meta
+      name="description"
+      content="fusebox provides pre-execution command mediation, bounded execution, and verifiable receipts for AI agents. Supervised MCP stdio proxy with zero data leakage."
+    />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#content">Skip to content</a>
+
+    <header class="top">
+      <div class="top-inner">
+        <a class="logo" href="/" aria-label="fusebox home">
+          <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span>fusebox</span>
+        </a>
+        <span class="header-tag" aria-hidden="true">EXECUTION GATEWAY / LOCAL MEDIATION</span>
+        <div class="header-right">
+          <span class="local-status"><i aria-hidden="true"></i> local / ready</span>
+          <a class="github-link" href="https://github.com/fusebox/fusebox">GitHub <span aria-hidden="true">↗</span></a>
+        </div>
+      </div>
+      <div class="scroll-track" aria-hidden="true"><span></span></div>
+    </header>
+
+    <main id="content">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-grid">
+          <div class="hero-copy">
+            <p class="eyebrow hero-enter"><span class="record-dot" aria-hidden="true"></span> Execution Gateway <span class="eyebrow-code">GATEWAY / 001</span></p>
+            <h1 id="hero-title">
+              <span class="title-line"><span>Mediate intent.</span></span>
+              <span class="title-line"><span>Bound process.</span></span>
+              <span class="title-line title-line-accent"><span>Prove receipts.</span></span>
+            </h1>
+            <p class="lede hero-enter">
+              Pre-execution command mediation and bounded execution for AI agents. fusebox supervises tool processes and records tamper-evident receipts for every action.
+            </p>
+            <div class="hero-actions hero-enter">
+              <a class="btn primary" href="#install">Install fusebox <span aria-hidden="true">↓</span></a>
+              <a class="trace-link" href="#workflow"><span>Trace a session</span><i aria-hidden="true">→</i></a>
+            </div>
+          </div>
+
+          <div class="hero-instrument hero-enter">
+            <div class="instrument-rail">
+              <span>SAMPLE TRACE / THIS REPO</span>
+              <span class="instrument-channel">DEPENDENCY GRAPH</span>
+            </div>
+            <div class="hero-visual" aria-hidden="true">
+              <canvas id="hero-canvas"></canvas>
+              <div class="core-fallback">
+                <svg viewBox="0 0 480 520" role="presentation">
+                  <g fill="none" stroke="currentColor">
+                    <rect x="90" y="50" width="300" height="420" opacity=".25" />
+                    <rect x="115" y="80" width="250" height="360" opacity=".5" />
+                    <rect x="140" y="110" width="200" height="300" opacity=".8" />
+                    <path d="M60 260h360M240 25v470" opacity=".18" stroke-dasharray="3 8" />
+                    <path d="M170 160l70 45 70-45M170 260l70-55 70 55M170 360l70-100 70 100" opacity=".45" />
+                  </g>
+                  <g fill="currentColor">
+                    <rect x="156" y="145" width="64" height="14" /><rect x="255" y="145" width="48" height="14" opacity=".45" />
+                    <rect x="168" y="205" width="44" height="14" opacity=".5" /><rect x="238" y="205" width="76" height="14" />
+                    <rect x="154" y="265" width="82" height="14" /><rect x="265" y="265" width="42" height="14" opacity=".5" />
+                    <rect x="170" y="325" width="52" height="14" opacity=".5" /><rect x="248" y="325" width="66" height="14" />
+                    <rect x="156" y="385" width="70" height="14" /><rect x="255" y="385" width="52" height="14" opacity=".45" />
+                  </g>
+                </svg>
+              </div>
+              <ol class="core-stages"><li data-stage="scan">SCAN</li><li data-stage="query">QUERY</li><li data-stage="conflict">CONFLICT</li><li data-stage="verify">VERIFY</li></ol>
+              <span class="corner corner-tl"></span><span class="corner corner-tr"></span>
+              <span class="corner corner-bl"></span><span class="corner corner-br"></span>
+            </div>
+            <div class="instrument-rail instrument-footer">
+              <span><i class="record-dot" aria-hidden="true"></i> <span class="core-caption">Hashing every file into a local index.</span></span>
+              <span class="core-state">SCANNING</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-readout hero-enter">
+          <div><span>SOURCE OF TRUTH</span><strong>Files on disk</strong></div>
+          <div><span>NETWORK</span><strong>0 outbound calls</strong></div>
+          <div><span>OUTPUT</span><strong>[file:line] evidence</strong></div>
+          <a class="scroll-cue" href="#reach"><i aria-hidden="true"></i><span>Scroll to reconstruct</span></a>
+        </div>
+      </section>
+
+      <div class="signal-strip" aria-label="Product calibration">
+        <div><span>01</span><strong>ON DISK</strong><small>source of truth</small></div>
+        <div><span>02</span><strong>LOCAL</strong><small>127.0.0.1 only</small></div>
+        <div><span>03</span><strong>DETERMINISTIC</strong><small>same tree, same bytes</small></div>
+        <div><span>04</span><strong>REFERENCED</strong><small>no orphan facts</small></div>
+      </div>
+
+      <section id="reach" class="plate reach-section" aria-labelledby="reach-title">
+        <header class="section-heading" data-reveal="heading">
+          <p class="kicker"><span>01</span> / INPUTS / REACH</p>
+          <h2 id="reach-title">Many agents.<br /><span>One execution gateway.</span></h2>
+          <p class="section-lede">
+            fusebox does not choose a model and does not talk to one. It sits between agents and tool processes, supervising execution and recording verifiable receipts.
+          </p>
+        </header>
+        <div class="ledger">
+          <article class="ledger-row" data-reveal="ledger">
+            <span class="ledger-index">01</span>
+            <div class="ledger-title"><p>AGENTS</p><h3>Parallel work. Strict mediation.</h3></div>
+            <p>Commands are mediated against declared intent policies. Unauthorized network or path escapes are blocked deterministically.</p>
+            <span class="ledger-tag">INTENT / BOUNDED</span>
+          </article>
+          <article class="ledger-row" data-reveal="ledger">
+            <span class="ledger-index">02</span>
+            <div class="ledger-title"><p>PLATFORMS</p><h3>Terminal, MCP stdio, host hooks.</h3></div>
+            <p>Connect Claude Code, Cursor, Copilot, or OpenCode over supervised MCP stdio, or run commands via the CLI.</p>
+            <span class="ledger-tag">CORE / SHARED</span>
+          </article>
+          <article class="ledger-row" data-reveal="ledger">
+            <span class="ledger-index">03</span>
+            <div class="ledger-title"><p>PROVIDERS</p><h3>No model of its own.</h3></div>
+            <p>Your tools can use any provider they already support. fusebox never calls them. Decisions come from local policy, not remote prompts.</p>
+            <span class="ledger-tag">API CALLS / ZERO</span>
+          </article>
+        </div>
+      </section>
+
+      <section id="workflow" class="plate workflow-section" aria-labelledby="workflow-title">
+        <header class="section-heading" data-reveal="heading">
+          <p class="kicker"><span>02</span> / RECORD / WORKFLOW</p>
+          <h2 id="workflow-title">The execution becomes<br /><span>the receipt.</span></h2>
+          <p class="section-lede">
+            No telemetry. No guessed intent. Supervised process boundaries produce tamper-evident cryptographic receipts.
+          </p>
+        </header>
+        <ol class="timeline">
+          <li data-reveal="step">
+            <div class="step-marker"><span>01</span></div>
+            <div class="step-body"><p class="step-meta">INPUT / COMMAND</p><h3>Agent declares intent.</h3><p>Tools or commands declare their scope. fusebox pre-resolves arguments before execution.</p></div>
+            <code class="step-command">intent → preflight</code>
+          </li>
+          <li data-reveal="step">
+            <div class="step-marker"><span>02</span></div>
+            <div class="step-body"><p class="step-meta">SUPERVISION / MCP PROXY</p><h3>Supervised stdio relay.</h3><p>Sanitizes JSON-RPC traffic, isolates noise, drops secrets, and enforces backpressure.</p></div>
+            <code class="step-command">fusebox proxy -- &lt;cmd&gt;</code>
+          </li>
+          <li data-reveal="step">
+            <div class="step-marker"><span>03</span></div>
+            <div class="step-body"><p class="step-meta">CONFINEMENT / OS BOUNDARY</p><h3>OS-level sandboxing.</h3><p>Filesystem and network restrictions contain the child process at the kernel level.</p></div>
+            <code class="step-command">landlock / seccomp</code>
+          </li>
+          <li data-reveal="step">
+            <div class="step-marker"><span>04</span></div>
+            <div class="step-body"><p class="step-meta">RECEIPT / VERIFICATION</p><h3>Inspectable evidence.</h3><p>Append-only hash-chained ledger stores execution decisions and outcomes.</p></div>
+            <code class="step-command">fusebox why &lt;receipt-id&gt;</code>
+          </li>
+        </ol>
+      </section>
+
+      <section id="surfaces" class="plate surfaces-section" aria-labelledby="surfaces-title">
+        <header class="section-heading" data-reveal="heading">
+          <p class="kicker"><span>03</span> / OUTPUT / SURFACES</p>
+          <h2 id="surfaces-title">One store.<br /><span>Four ways in.</span></h2>
+          <p class="section-lede">The terminal, your agent, the loopback review page, and hand-written cards all read from the same local record.</p>
+        </header>
+
+        <div class="console" data-reveal="console">
+          <div class="console-rail"><span>SURFACE SELECTOR / STDIO + LOOPBACK</span><span class="console-live"><i></i> CORE CONNECTED</span></div>
+          <div class="tabs console-tabs" role="tablist" aria-label="Product surfaces">
+            <button type="button" role="tab" aria-selected="true" aria-controls="p-menu" id="tp-menu" data-tabgroup="term"><span>01</span> Terminal</button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="p-mcp" id="tp-mcp" data-tabgroup="term" tabindex="-1"><span>02</span> MCP</button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="p-review" id="tp-review" data-tabgroup="term" tabindex="-1"><span>03</span> Review page</button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="p-cards" id="tp-cards" data-tabgroup="term" tabindex="-1"><span>04</span> Cards</button>
+          </div>
+          <div class="stage">
+            <div class="stage-bar"><span>fusebox / acme</span><span>UTF-8 &nbsp; LOCAL &nbsp; SUPERVISED*</span></div>
+            <div class="screen panel" role="tabpanel" id="p-menu" aria-labelledby="tp-menu">
+<pre><span class="dim">~/code/acme</span> <span class="g">$</span> fusebox --help
+
+  <b>fusebox</b>  <span class="dim">local execution gateway · bounded execution · verifiable receipts</span>
+
+  <span class="sel">▸ proxy</span>    Supervised MCP stdio proxy
+    run      Execute command with intent policy
+    why      Inspect decision receipt
+    verify   Validate journal integrity
+
+  <span class="dim">runs:</span> fusebox proxy -- &lt;cmd&gt; [args...]</pre>
+            </div>
+            <div class="screen panel" role="tabpanel" id="p-mcp" aria-labelledby="tp-mcp" hidden>
+<pre><span class="dim">~/code/acme</span> <span class="g">$</span> fusebox proxy -- npx -y @modelcontextprotocol/server-filesystem .
+<span class="dim"># supervised stdio proxy: classifies frames, strips noise & secrets</span>
+  jsonrpc 2.0 frames forwarded
+  host stderr receives child diagnostics
+  bounded channels: capacity 64
+  session diagnostic ring: 512 entries
+
+<span class="dim">child stdout →</span> {"jsonrpc":"2.0","method":"tools/list","params":{}}
+<span class="dim">fusebox proxy →</span> verified protocol frame forwarded</pre>
+            </div>
+            <div class="screen panel" role="tabpanel" id="p-review" aria-labelledby="tp-review" hidden>
+<pre><span class="dim">~/code/acme</span> <span class="g">$</span> fusebox why rcpt_01h8x
+<span class="g">✓</span> receipt verified · sha256:4a8f... · policy: ALLOW_WORKSPACE_READ
+
+  Request: read file src/config.ts
+  Decision: ALLOW (in intent scope)
+  Hash chain: valid (link 42)</pre>
+            </div>
+            <div class="screen panel" role="tabpanel" id="p-cards" aria-labelledby="tp-cards" hidden>
+<pre><span class="dim">~/code/acme</span> <span class="g">$</span> fusebox verify
+<span class="g">✓</span> ledger verified · 42 receipts checked · 0 broken links</pre>
+            </div>
+          </div>
+          <div class="console-footer"><span>* Writes require policy authorization</span><span>STORAGE / .fusebox</span><span>NET / 0 ↑</span></div>
+        </div>
+      </section>
+
+      <section id="review" class="plate review-section" aria-labelledby="review-title">
+        <header class="section-heading review-heading" data-reveal="heading">
+          <p class="kicker"><span>04</span> / EVIDENCE / RECEIPTS</p>
+          <h2 id="review-title">Inspect the receipt.<br /><span>Cryptographic evidence.</span></h2>
+          <p class="section-lede">
+            <code>fusebox why</code> proves what was allowed, what was blocked, and why.
+          </p>
+        </header>
+
+        <div class="evidence" data-reveal="evidence">
+          <aside class="evidence-note">
+            <span class="evidence-stamp">HUMAN CHECKPOINT / 04</span>
+            <p>“Done” is not a feeling. It is a checklist with references attached.</p>
+            <div><span>REVIEW BIND</span><strong>127.0.0.1</strong></div>
+            <div><span>IDLE TIMEOUT</span><strong>Enabled</strong></div>
+          </aside>
+
+          <div class="review-frame" aria-hidden="true">
+            <div class="review-bar">
+              <span class="crumb">ACME / INBOX</span>
+              <span class="review-views"><b>Inbox</b><span>Board</span><span>List</span><span>Cards</span></span>
+              <span class="review-count">03 NEEDS REVIEW</span>
+            </div>
+            <div class="evidence-grid">
+              <div class="ticket-queue">
+                <div class="queue-item active"><span>T-cb578e61f7cd</span><strong>Upgrade plan from the billing page</strong><small><i></i> IN REVIEW · 3/4</small></div>
+                <div class="queue-item"><span>T-19aa04c0e2b1</span><strong>Session token rotation</strong><small>OPEN · 1/4</small></div>
+                <div class="queue-item"><span>T-88f01c2ab910</span><strong>Single sign-on callback</strong><small>BLOCKED · REASON REQUIRED</small></div>
+              </div>
+              <article class="ticket-detail">
+                <header><span class="ticket-id">T-cb578e61f7cd / BILLING</span><span class="ticket-status"><i></i> IN REVIEW</span></header>
+                <h3>Upgrade plan from the billing page</h3>
+                <p class="ticket-ref">src/billing/plans.ts:1</p>
+                <div class="done-label"><span>GROUPS VERIFIED / 3 OF 4</span><strong>75%</strong></div>
+                <div class="evidence-progress"><span></span></div>
+                <ul class="checklist">
+                  <li class="checked"><i>✓</i><span>Billing behavior · 2 files · P2</span><code>plans.ts:42</code></li>
+                  <li class="checked"><i>✓</i><span>Payment failure handling · 1 file · P1</span><code>test:billing</code></li>
+                  <li class="checked"><i>✓</i><span>Receipt delivery · 2 files · P2</span><code>log:8fd2a1</code></li>
+                  <li><i></i><span>Invoice proration · 1 file · P2</span><code>ADD REF</code></li>
+                </ul>
+                <div class="ticket-actions"><span>Approve</span><span>Bounce back</span><small>A / B</small></div>
+              </article>
+            </div>
+            <p class="keys"><kbd>j</kbd><kbd>k</kbd> move <kbd>enter</kbd> open <kbd>a</kbd> approve <kbd>b</kbd> bounce <kbd>?</kbd> help</p>
+          </div>
+        </div>
+
+        <ul class="review-rules">
+          <li data-reveal="proof"><span>01</span><p><b>Evidence to finish.</b> Attach <code>[file:line]</code>, a sha, <code>test:&lt;name&gt;</code>, or <code>log:&lt;hash&gt;</code>.</p></li>
+          <li data-reveal="proof"><span>02</span><p><b>Writes are opt-in.</b> MCP and the page stay read-only until <code>--allow-writes</code>.</p></li>
+          <li data-reveal="proof"><span>03</span><p><b>Cards stay yours.</b> Your sentence, your refs, and an explicit link to whatever it replaces.</p></li>
+        </ul>
+      </section>
+
+      <section id="principles" class="plate principles-section" aria-labelledby="principles-title">
+        <header class="section-heading" data-reveal="heading">
+          <p class="kicker"><span>05</span> / GUARANTEES / INVARIANTS</p>
+          <h2 id="principles-title">Nothing leaves<br /><span>the machine.</span></h2>
+          <p class="section-lede">The constraints are the product. They make the record safe to store, cheap to query, and possible to trust.</p>
+        </header>
+        <ol class="proof-list">
+          <li data-reveal="proof"><span class="proof-index">01</span><h3>Zero outbound network.</h3><p>No telemetry, model API, or update check. Review and optional MCP HTTP are inbound on loopback.</p><span class="proof-mark">0 ↑</span></li>
+          <li data-reveal="proof"><span class="proof-index">02</span><h3>Reference only.</h3><p>If a fact has no <code>[file:line]</code>, it is not in the output. No reference, no memory.</p><span class="proof-mark">[ : ]</span></li>
+          <li data-reveal="proof"><span class="proof-index">03</span><h3>Deterministic.</h3><p>Same tree, same ticket bytes. UI preferences live separately and never change a scan.</p><span class="proof-mark">A = A</span></li>
+          <li data-reveal="proof"><span class="proof-index">04</span><h3>Hash-verified.</h3><p>State is written atomically. Exported cards carry a hash you can independently check.</p><span class="proof-mark"># OK</span></li>
+        </ol>
+      </section>
+
+      <section id="install" class="plate install-section" aria-labelledby="install-title">
+        <header class="section-heading" data-reveal="heading">
+          <p class="kicker"><span>06</span> / INITIALIZE / INSTALL</p>
+          <h2 id="install-title">Let the next session<br /><span>remember this one.</span></h2>
+          <p class="section-lede">Start in the terminal you already use. No account, no API key, no background service.</p>
+        </header>
+
+        <div class="installer" data-reveal="console">
+          <div class="install-primary">
+            <div class="install-label"><span>INSTALL COMMAND</span><span>NODE.JS 20+</span></div>
+            <div class="tabs install-tabs" role="tablist" aria-label="Install method">
+              <button type="button" role="tab" aria-selected="true" aria-controls="i-curl" id="t-curl" data-tabgroup="install">curl</button>
+              <button type="button" role="tab" aria-selected="false" aria-controls="i-npm" id="t-npm" data-tabgroup="install" tabindex="-1">npm</button>
+              <button type="button" role="tab" aria-selected="false" aria-controls="i-pnpm" id="t-pnpm" data-tabgroup="install" tabindex="-1">pnpm</button>
+              <button type="button" role="tab" aria-selected="false" aria-controls="i-bun" id="t-bun" data-tabgroup="install" tabindex="-1">bun</button>
+            </div>
+            <div class="cmd" role="tabpanel" id="i-curl" aria-labelledby="t-curl">
+              <code id="c-curl"><span class="dim">$</span> curl -fsSL https://fusebox.netlify.app/install | bash</code>
+              <button type="button" class="copy" data-copy="c-curl" aria-label="Copy curl install command">Copy</button>
+            </div>
+            <div class="cmd" role="tabpanel" id="i-npm" aria-labelledby="t-npm" hidden>
+              <code id="c-npm"><span class="dim">$</span> npm install -g fusebox</code>
+              <button type="button" class="copy" data-copy="c-npm" aria-label="Copy npm install command">Copy</button>
+            </div>
+            <div class="cmd" role="tabpanel" id="i-pnpm" aria-labelledby="t-pnpm" hidden>
+              <code id="c-pnpm"><span class="dim">$</span> pnpm add -g fusebox</code>
+              <button type="button" class="copy" data-copy="c-pnpm" aria-label="Copy pnpm install command">Copy</button>
+            </div>
+            <div class="cmd" role="tabpanel" id="i-bun" aria-labelledby="t-bun" hidden>
+              <code id="c-bun"><span class="dim">$</span> bun add -g fusebox</code>
+              <button type="button" class="copy" data-copy="c-bun" aria-label="Copy bun install command">Copy</button>
+            </div>
+            <p class="note">Or run it once with <code>npx fusebox</code>. Requires Node.js 20 or newer.</p>
+          </div>
+
+          <div class="mcp-config">
+            <div class="install-label"><span>MCP CONFIGURATION</span><span>STDIO / LOCAL</span></div>
+            <h3>Wire it into your agent.</h3>
+            <div class="cmd block">
+<pre><code id="c-mcp">{
+  "mcpServers": {
+    "filesystem-supervised": {
+      "command": "fusebox",
+      "args": [
+        "proxy",
+        "--",
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/path/to/workspace"
+      ]
+    }
+  }
+}</code></pre>
+              <button type="button" class="copy" data-copy="c-mcp" aria-label="Copy MCP config">Copy</button>
+            </div>
+          </div>
+          <p class="status" role="status" aria-live="polite"></p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="footer-inner">
+        <a class="logo" href="/" aria-label="fusebox home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>fusebox</span></a>
+        <p>Pre-execution command mediation and bounded execution.<br /><span>Deterministic policy. Verifiable receipts.</span></p>
+        <nav aria-label="Project links"><a href="https://github.com/fusebox/fusebox">GitHub ↗</a><a href="https://www.npmjs.com/package/fusebox">npm ↗</a><a href="https://github.com/fusebox/fusebox/blob/main/LICENSE">MIT ↗</a></nav>
+      </div>
+      <div class="footer-rail"><span>FUSEBOX / EXECUTION GATEWAY</span><span>LOCAL BY DESIGN</span><span>END OF RECORD</span></div>
+    </footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

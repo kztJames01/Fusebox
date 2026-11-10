@@ -1,0 +1,144 @@
+#!/usr/bin/env bash
+# fusebox installer.
+#
+#   curl -fsSL https://fusebox.netlify.app/install | bash
+#
+# Installs the `fusebox` CLI from npm. This script is the only part of the
+# project that touches the network, and only to ask your package manager to
+# download the package. fusebox itself makes no outbound calls.
+#
+# Options (environment variables):
+#   FUSEBOX_VERSION   Version or dist-tag to install (default: latest)
+#   FUSEBOX_PM        npm | pnpm | bun (default: first one found)
+#   FUSEBOX_PREFIX    Install prefix when global install is not writable
+#                      (default: $HOME/.fusebox, binary in $PREFIX/bin)
+#   DRY_RUN=1          Print what would run, change nothing
+#
+# Read it before you run it: https://fusebox.netlify.app/install
+set -euo pipefail
+
+PACKAGE="fusebox"
+MIN_NODE_MAJOR=20
+VERSION="${FUSEBOX_VERSION:-latest}"
+PREFIX="${FUSEBOX_PREFIX:-$HOME/.fusebox}"
+DRY_RUN="${DRY_RUN:-0}"
+
+if [ -t 1 ]; then
+  BOLD=$'\033[1m'; DIM=$'\033[2m'; RED=$'\033[31m'; GREEN=$'\033[32m'; YELLOW=$'\033[33m'; RESET=$'\033[0m'
+else
+  BOLD=""; DIM=""; RED=""; GREEN=""; YELLOW=""; RESET=""
+fi
+
+info() { printf '%s\n' "${DIM}›${RESET} $*"; }
+ok()   { printf '%s\n' "${GREEN}✓${RESET} $*"; }
+warn() { printf '%s\n' "${YELLOW}!${RESET} $*" >&2; }
+die()  { printf '%s\n' "${RED}✗${RESET} $*" >&2; exit 1; }
+
+usage() {
+  sed -n '2,19p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//' || true
+}
+
+for arg in "$@"; do
+  case "$arg" in
+    -h|--help) usage; exit 0 ;;
+    *) die "Unknown argument: $arg (configure with environment variables; see --help)" ;;
+  esac
+done
+
+run() {
+  if [ "$DRY_RUN" = "1" ]; then
+    printf '%s\n' "${DIM}[dry-run]${RESET} $*"
+    return 0
+  fi
+  "$@"
+}
+
+# --- Platform -----------------------------------------------------------------
+case "$(uname -s)" in
+  Darwin|Linux) ;;
+  *) die "Unsupported OS: $(uname -s). On Windows use: npm install -g $PACKAGE" ;;
+esac
+
+# --- Node ---------------------------------------------------------------------
+if ! command -v node >/dev/null 2>&1; then
+  die "Node.js >= $MIN_NODE_MAJOR is required but was not found. Install it from https://nodejs.org and re-run."
+fi
+NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
+if [ "$NODE_MAJOR" -lt "$MIN_NODE_MAJOR" ]; then
+  die "Node.js >= $MIN_NODE_MAJOR is required (found $(node -v))."
+fi
+info "Node $(node -v)"
+
+# --- Package manager ----------------------------------------------------------
+PM="${FUSEBOX_PM:-}"
+if [ -z "$PM" ]; then
+  for candidate in npm pnpm bun; do
+    if command -v "$candidate" >/dev/null 2>&1; then PM="$candidate"; break; fi
+  done
+fi
+[ -n "$PM" ] || die "No package manager found. Install npm (bundled with Node.js), pnpm, or bun."
+command -v "$PM" >/dev/null 2>&1 || die "Package manager not found: $PM"
+case "$PM" in npm|pnpm|bun) ;; *) die "FUSEBOX_PM must be npm, pnpm, or bun (got: $PM)" ;; esac
+info "Using $PM"
+
+SPEC="$PACKAGE@$VERSION"
+
+global_install() {
+  case "$PM" in
+    npm)  run npm install -g "$SPEC" ;;
+    pnpm) run pnpm add -g "$SPEC" ;;
+    bun)  run bun add -g "$SPEC" ;;
+  esac
+}
+
+prefix_install() {
+  # Used when the global location is not writable; avoids sudo.
+  run mkdir -p "$PREFIX"
+  case "$PM" in
+    npm)  run npm install -g --prefix "$PREFIX" "$SPEC" ;;
+    pnpm) run env PNPM_HOME="$PREFIX/bin" pnpm add -g "$SPEC" ;;
+    bun)  run env BUN_INSTALL="$PREFIX" bun add -g "$SPEC" ;;
+  esac
+}
+
+INSTALLED_BIN_DIR=""
+info "Installing $SPEC"
+if global_install; then
+  ok "Installed $SPEC globally"
+else
+  warn "Global install failed (often a permissions issue). Retrying under $PREFIX without sudo."
+  prefix_install || die "Install failed. Try: $PM install -g $SPEC"
+  INSTALLED_BIN_DIR="$PREFIX/bin"
+  ok "Installed $SPEC into $PREFIX"
+fi
+
+# --- Verify -------------------------------------------------------------------
+if [ "$DRY_RUN" = "1" ]; then
+  ok "Dry run complete. Nothing was changed."
+  exit 0
+fi
+
+BIN=""
+if [ -n "$INSTALLED_BIN_DIR" ] && [ -x "$INSTALLED_BIN_DIR/fusebox" ]; then
+  BIN="$INSTALLED_BIN_DIR/fusebox"
+elif command -v fusebox >/dev/null 2>&1; then
+  BIN="$(command -v fusebox)"
+fi
+
+if [ -z "$BIN" ]; then
+  warn "Installed, but fusebox is not on your PATH yet. Open a new terminal, or add your package manager's global bin directory to PATH."
+  exit 0
+fi
+
+ok "fusebox $("$BIN" --version) → $BIN"
+
+case ":$PATH:" in
+  *":$(dirname "$BIN"):"*) ;;
+  *)
+    warn "$(dirname "$BIN") is not on your PATH. Add this to your shell profile:"
+    printf '\n    export PATH="%s:$PATH"\n\n' "$(dirname "$BIN")"
+    ;;
+esac
+
+printf '\n%s\n' "${BOLD}Next${RESET}"
+printf '  cd your-project\n  fusebox --help\n'
