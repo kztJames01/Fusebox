@@ -1,0 +1,95 @@
+{
+  "files": [
+    {
+      "path": "src/Utils/Fmt.ts",
+      "content_hash": "0371c852b4f6b4decf7e3bee47806f136d863d5432b5dcde2c0b9063bb6881eb",
+      "raw_hash": "0371c852b4f6b4decf7e3bee47806f136d863d5432b5dcde2c0b9063bb6881eb",
+      "size": 70,
+      "lang": "ts"
+    },
+    {
+      "path": "src/deep/er/leaf.ts",
+      "content_hash": "8c6fd2594de9485251286d7b46011a2396764d17a1bab34705a433c14400e2d7",
+      "raw_hash": "8c6fd2594de9485251286d7b46011a2396764d17a1bab34705a433c14400e2d7",
+      "size": 146,
+      "lang": "ts"
+    },
+    {
+      "path": "src/with space/spaced.ts",
+      "content_hash": "65eac15ef84439f9877be18b4b22acefbc315e35e6dac2b8efce86c703d8ba4b",
+      "raw_hash": "65eac15ef84439f9877be18b4b22acefbc315e35e6dac2b8efce86c703d8ba4b",
+      "size": 70,
+      "lang": "ts"
+    }
+  ],
+  "symbols": [
+    {
+      "path": "src/Utils/Fmt.ts",
+      "name": "fmt",
+      "kind": "function",
+      "signature": "function fmt(value)",
+      "line": 1,
+      "content_hash": "0371c852b4f6b4decf7e3bee47806f136d863d5432b5dcde2c0b9063bb6881eb"
+    },
+    {
+      "path": "src/deep/er/leaf.ts",
+      "name": "leaf",
+      "kind": "function",
+      "signature": "function leaf()",
+      "line": 3,
+      "content_hash": "8c6fd2594de9485251286d7b46011a2396764d17a1bab34705a433c14400e2d7"
+    },
+    {
+      "path": "src/with space/spaced.ts",
+      "name": "spaced",
+      "kind": "const",
+      "signature": null,
+      "line": 2,
+      "content_hash": "65eac15ef84439f9877be18b4b22acefbc315e35e6dac2b8efce86c703d8ba4b"
+    }
+  ],
+  "edges": [
+    {
+      "src_id": "File:src/Utils/Fmt.ts",
+      "dst_id": "Symbol:src/Utils/Fmt.ts:1:fmt",
+      "kind": "defines",
+      "source_path": "src/Utils/Fmt.ts",
+      "source_line": 1
+    },
+    {
+      "src_id": "File:src/deep/er/leaf.ts",
+      "dst_id": "File:src/Utils/Fmt.ts",
+      "kind": "imports",
+      "source_path": "src/deep/er/leaf.ts",
+      "source_line": null
+    },
+    {
+      "src_id": "File:src/deep/er/leaf.ts",
+      "dst_id": "File:src/with space/spaced.ts",
+      "kind": "imports",
+      "source_path": "src/deep/er/leaf.ts",
+      "source_line": null
+    },
+    {
+      "src_id": "File:src/deep/er/leaf.ts",
+      "dst_id": "Symbol:src/deep/er/leaf.ts:3:leaf",
+      "kind": "defines",
+      "source_path": "src/deep/er/leaf.ts",
+      "source_line": 3
+    },
+    {
+      "src_id": "File:src/with space/spaced.ts",
+      "dst_id": "File:src/Utils/Fmt.ts",
+      "kind": "imports",
+      "source_path": "src/with space/spaced.ts",
+      "source_line": null
+    },
+    {
+      "src_id": "File:src/with space/spaced.ts",
+      "dst_id": "Symbol:src/with space/spaced.ts:2:spaced",
+      "kind": "defines",
+      "source_path": "src/with space/spaced.ts",
+      "source_line": 2
+    }
+  ]
+}

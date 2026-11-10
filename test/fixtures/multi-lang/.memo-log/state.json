@@ -1,0 +1,70 @@
+{
+  "version": 2,
+  "lastRun": "2026-11-10T06:21:10.252Z",
+  "files": {
+    "auth/login.go": {
+      "hash": "3962815e0c58900c51a330186d83d993ab499363bf9df4fad6aa3b8bdf487a9c",
+      "fingerprint": "6f38b036591560cb",
+      "normalizedContentHash": "b4819d4834b50157906d98b5c38e102a78f8ecac72a7521c56851fa86a464361",
+      "changedAt": 1794291670251,
+      "exports": {
+        "LoginUser": {
+          "kind": "function",
+          "line": 3,
+          "signature": "func LoginUser(email, password)"
+        },
+        "SessionStore": {
+          "kind": "class",
+          "line": 7
+        }
+      }
+    },
+    "auth/login.py": {
+      "hash": "1a1c7154a4886c7ebcb8fe9cd0e707cfb94df7accb6b88a5a13fd6d4b9102cca",
+      "fingerprint": "99e3a45ae9d2b1f3",
+      "normalizedContentHash": "8d7614b5e741032c6298b7728eead52c0d707048510f2bf4b74f7108cd3d7ae8",
+      "changedAt": 1794291670252,
+      "exports": {
+        "login_user": {
+          "kind": "function",
+          "line": 1,
+          "signature": "def login_user(email, password)"
+        },
+        "SessionStore": {
+          "kind": "class",
+          "line": 4
+        }
+      }
+    },
+    "auth/login.rs": {
+      "hash": "e871e04b98b2ee706ee7f55b164fcac16c3be2fd8b1f8b691b21c595c4b87683",
+      "fingerprint": "99e3a45ae9d2b1f3",
+      "normalizedContentHash": "479739300d1bc41aea5c27be2af17fa950319af310a8bbd5873cda14ecde1c4f",
+      "changedAt": 1794291670252,
+      "exports": {
+        "login_user": {
+          "kind": "function",
+          "line": 1,
+          "signature": "fn login_user(email, password)"
+        },
+        "SessionStore": {
+          "kind": "class",
+          "line": 5
+        }
+      }
+    },
+    "utils/format.ts": {
+      "hash": "c94330a7b212eaf1110742150a4f3c04ca913472ec3ba8ddd348c6f1ad472ac1",
+      "fingerprint": "2a46deb0ca0de22d",
+      "normalizedContentHash": "f7fc79c1e533f9603ee33f9061c0729049693eeab4f1b2da354dcb849d9337a0",
+      "changedAt": 1794291670252,
+      "exports": {
+        "formatLabel": {
+          "kind": "function",
+          "line": 1,
+          "signature": "function formatLabel(value)"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,155 @@
+{
+  "files": [
+    {
+      "path": "go/main.go",
+      "content_hash": "abca24e82b127fa538cf6ee36fcaa9b2fd4726686f2a267a02032accb956bc8b",
+      "raw_hash": "abca24e82b127fa538cf6ee36fcaa9b2fd4726686f2a267a02032accb956bc8b",
+      "size": 57,
+      "lang": "go"
+    },
+    {
+      "path": "py/tool.py",
+      "content_hash": "c8276a3db754f953bf796ba6e834e658296ff0c78151bba985e0ee6944432c95",
+      "raw_hash": "c8276a3db754f953bf796ba6e834e658296ff0c78151bba985e0ee6944432c95",
+      "size": 58,
+      "lang": "py"
+    },
+    {
+      "path": "rs/lib.rs",
+      "content_hash": "dcae8b2d1c1056cac0c75982b626a40478dd70dcb8c0f27a3066296481a903df",
+      "raw_hash": "dcae8b2d1c1056cac0c75982b626a40478dd70dcb8c0f27a3066296481a903df",
+      "size": 100,
+      "lang": "rs"
+    },
+    {
+      "path": "src/app.ts",
+      "content_hash": "e1c50ce0997659b670b8f6870384de722b1c3d67f3eb21ed7b4e8d9a020dc3c6",
+      "raw_hash": "e1c50ce0997659b670b8f6870384de722b1c3d67f3eb21ed7b4e8d9a020dc3c6",
+      "size": 104,
+      "lang": "ts"
+    },
+    {
+      "path": "src/greet.js",
+      "content_hash": "6d25aaa55e6743a689353d831d7062b3f8f829802ec810ddee67a0d1b55041fc",
+      "raw_hash": "6d25aaa55e6743a689353d831d7062b3f8f829802ec810ddee67a0d1b55041fc",
+      "size": 58,
+      "lang": "ts"
+    }
+  ],
+  "symbols": [
+    {
+      "path": "go/main.go",
+      "name": "Serve",
+      "kind": "function",
+      "signature": "func Serve(port)",
+      "line": 3,
+      "content_hash": "abca24e82b127fa538cf6ee36fcaa9b2fd4726686f2a267a02032accb956bc8b"
+    },
+    {
+      "path": "py/tool.py",
+      "name": "build",
+      "kind": "function",
+      "signature": "def build(path)",
+      "line": 1,
+      "content_hash": "c8276a3db754f953bf796ba6e834e658296ff0c78151bba985e0ee6944432c95"
+    },
+    {
+      "path": "py/tool.py",
+      "name": "Runner",
+      "kind": "class",
+      "signature": null,
+      "line": 5,
+      "content_hash": "c8276a3db754f953bf796ba6e834e658296ff0c78151bba985e0ee6944432c95"
+    },
+    {
+      "path": "rs/lib.rs",
+      "name": "parse",
+      "kind": "function",
+      "signature": "fn parse(input)",
+      "line": 1,
+      "content_hash": "dcae8b2d1c1056cac0c75982b626a40478dd70dcb8c0f27a3066296481a903df"
+    },
+    {
+      "path": "rs/lib.rs",
+      "name": "Config",
+      "kind": "class",
+      "signature": null,
+      "line": 5,
+      "content_hash": "dcae8b2d1c1056cac0c75982b626a40478dd70dcb8c0f27a3066296481a903df"
+    },
+    {
+      "path": "src/app.ts",
+      "name": "run",
+      "kind": "function",
+      "signature": "function run(name)",
+      "line": 2,
+      "content_hash": "e1c50ce0997659b670b8f6870384de722b1c3d67f3eb21ed7b4e8d9a020dc3c6"
+    },
+    {
+      "path": "src/greet.js",
+      "name": "greet",
+      "kind": "function",
+      "signature": "function greet(name)",
+      "line": 1,
+      "content_hash": "6d25aaa55e6743a689353d831d7062b3f8f829802ec810ddee67a0d1b55041fc"
+    }
+  ],
+  "edges": [
+    {
+      "src_id": "File:go/main.go",
+      "dst_id": "Symbol:go/main.go:3:Serve",
+      "kind": "defines",
+      "source_path": "go/main.go",
+      "source_line": 3
+    },
+    {
+      "src_id": "File:py/tool.py",
+      "dst_id": "Symbol:py/tool.py:1:build",
+      "kind": "defines",
+      "source_path": "py/tool.py",
+      "source_line": 1
+    },
+    {
+      "src_id": "File:py/tool.py",
+      "dst_id": "Symbol:py/tool.py:5:Runner",
+      "kind": "defines",
+      "source_path": "py/tool.py",
+      "source_line": 5
+    },
+    {
+      "src_id": "File:rs/lib.rs",
+      "dst_id": "Symbol:rs/lib.rs:1:parse",
+      "kind": "defines",
+      "source_path": "rs/lib.rs",
+      "source_line": 1
+    },
+    {
+      "src_id": "File:rs/lib.rs",
+      "dst_id": "Symbol:rs/lib.rs:5:Config",
+      "kind": "defines",
+      "source_path": "rs/lib.rs",
+      "source_line": 5
+    },
+    {
+      "src_id": "File:src/app.ts",
+      "dst_id": "File:src/greet.js",
+      "kind": "imports",
+      "source_path": "src/app.ts",
+      "source_line": null
+    },
+    {
+      "src_id": "File:src/app.ts",
+      "dst_id": "Symbol:src/app.ts:2:run",
+      "kind": "defines",
+      "source_path": "src/app.ts",
+      "source_line": 2
+    },
+    {
+      "src_id": "File:src/greet.js",
+      "dst_id": "Symbol:src/greet.js:1:greet",
+      "kind": "defines",
+      "source_path": "src/greet.js",
+      "source_line": 1
+    }
+  ]
+}

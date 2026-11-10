@@ -1,0 +1,30 @@
+{
+  "files": [
+    {
+      "path": "src/old.ts",
+      "content_hash": "70908cebe45080813d0abcd9fdac537947160eaad68a49ea88c9afff2a884068",
+      "raw_hash": "70908cebe45080813d0abcd9fdac537947160eaad68a49ea88c9afff2a884068",
+      "size": 34,
+      "lang": "ts"
+    }
+  ],
+  "symbols": [
+    {
+      "path": "src/old.ts",
+      "name": "legacy",
+      "kind": "function",
+      "signature": "function legacy()",
+      "line": 1,
+      "content_hash": "70908cebe45080813d0abcd9fdac537947160eaad68a49ea88c9afff2a884068"
+    }
+  ],
+  "edges": [
+    {
+      "src_id": "File:src/old.ts",
+      "dst_id": "Symbol:src/old.ts:1:legacy",
+      "kind": "defines",
+      "source_path": "src/old.ts",
+      "source_line": 1
+    }
+  ]
+}

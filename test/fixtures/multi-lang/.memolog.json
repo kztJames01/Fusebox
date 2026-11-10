@@ -1,0 +1,11 @@
+{
+  "languages": ["ts", "py", "rs", "go"],
+  "exclude": ["node_modules", ".git", "dist", "build", ".memo-log"],
+  "output": {
+    "markdown": "AI_MEMORY.md",
+    "json": "AI_MEMORY.json"
+  },
+  "maxDepth": 10,
+  "mode": "brief",
+  "filter": "logic"
+}

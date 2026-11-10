@@ -1,0 +1,90 @@
+{
+  "files": [
+    {
+      "path": "src/values.ts",
+      "content_hash": "301db508aa333ee2e9ebe954f16296985a770ab7a3589820270be215db6e14d7",
+      "raw_hash": "301db508aa333ee2e9ebe954f16296985a770ab7a3589820270be215db6e14d7",
+      "size": 136,
+      "lang": "ts"
+    }
+  ],
+  "symbols": [
+    {
+      "path": "src/values.ts",
+      "name": "limit",
+      "kind": "const",
+      "signature": null,
+      "line": 1,
+      "content_hash": "301db508aa333ee2e9ebe954f16296985a770ab7a3589820270be215db6e14d7"
+    },
+    {
+      "path": "src/values.ts",
+      "name": "Box",
+      "kind": "class",
+      "signature": "class Box",
+      "line": 2,
+      "content_hash": "301db508aa333ee2e9ebe954f16296985a770ab7a3589820270be215db6e14d7"
+    },
+    {
+      "path": "src/values.ts",
+      "name": "Mode",
+      "kind": "const",
+      "signature": null,
+      "line": 3,
+      "content_hash": "301db508aa333ee2e9ebe954f16296985a770ab7a3589820270be215db6e14d7"
+    },
+    {
+      "path": "src/values.ts",
+      "name": "Id",
+      "kind": "type",
+      "signature": null,
+      "line": 4,
+      "content_hash": "301db508aa333ee2e9ebe954f16296985a770ab7a3589820270be215db6e14d7"
+    },
+    {
+      "path": "src/values.ts",
+      "name": "Shape",
+      "kind": "type",
+      "signature": null,
+      "line": 5,
+      "content_hash": "301db508aa333ee2e9ebe954f16296985a770ab7a3589820270be215db6e14d7"
+    }
+  ],
+  "edges": [
+    {
+      "src_id": "File:src/values.ts",
+      "dst_id": "Symbol:src/values.ts:1:limit",
+      "kind": "defines",
+      "source_path": "src/values.ts",
+      "source_line": 1
+    },
+    {
+      "src_id": "File:src/values.ts",
+      "dst_id": "Symbol:src/values.ts:2:Box",
+      "kind": "defines",
+      "source_path": "src/values.ts",
+      "source_line": 2
+    },
+    {
+      "src_id": "File:src/values.ts",
+      "dst_id": "Symbol:src/values.ts:3:Mode",
+      "kind": "defines",
+      "source_path": "src/values.ts",
+      "source_line": 3
+    },
+    {
+      "src_id": "File:src/values.ts",
+      "dst_id": "Symbol:src/values.ts:4:Id",
+      "kind": "defines",
+      "source_path": "src/values.ts",
+      "source_line": 4
+    },
+    {
+      "src_id": "File:src/values.ts",
+      "dst_id": "Symbol:src/values.ts:5:Shape",
+      "kind": "defines",
+      "source_path": "src/values.ts",
+      "source_line": 5
+    }
+  ]
+}

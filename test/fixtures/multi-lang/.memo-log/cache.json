@@ -1,0 +1,140 @@
+{
+  "schemaVersion": 2,
+  "lastScan": "2026-11-10T06:21:10.224Z",
+  "calibration": {
+    "avgParseMs": 0,
+    "concurrency": 8,
+    "lastCalibrated": "2026-11-10T06:21:10.224Z"
+  },
+  "files": {
+    "auth/login.go": {
+      "hash": "602e0113407946c0fac024c916ef76f4ac9d818d37a885eefffd87bb1c2a195d",
+      "category": "auth",
+      "fingerprint": "LoginUser,SessionStore||1",
+      "exports": [
+        "LoginUser",
+        "SessionStore"
+      ],
+      "data": {
+        "lang": "go",
+        "normalizedContentHash": "b4819d4834b50157906d98b5c38e102a78f8ecac72a7521c56851fa86a464361",
+        "exports": [
+          {
+            "name": "LoginUser",
+            "line": 3,
+            "column": 0,
+            "kind": "function",
+            "signature": "func LoginUser(email, password)"
+          },
+          {
+            "name": "SessionStore",
+            "line": 7,
+            "column": 0,
+            "kind": "class"
+          }
+        ],
+        "imports": [],
+        "signatures": [
+          "func LoginUser(email, password)"
+        ]
+      },
+      "mtime": 1794288604104,
+      "size": 141
+    },
+    "auth/login.py": {
+      "hash": "d4a118618c49555fc5d82f8003d555a985539365588d10f2e629b2e32b14aae2",
+      "category": "auth",
+      "fingerprint": "SessionStore,login_user||1",
+      "exports": [
+        "SessionStore",
+        "login_user"
+      ],
+      "data": {
+        "lang": "py",
+        "normalizedContentHash": "8d7614b5e741032c6298b7728eead52c0d707048510f2bf4b74f7108cd3d7ae8",
+        "exports": [
+          {
+            "name": "login_user",
+            "line": 1,
+            "column": 0,
+            "kind": "function",
+            "signature": "def login_user(email, password)"
+          },
+          {
+            "name": "SessionStore",
+            "line": 4,
+            "column": 0,
+            "kind": "class"
+          }
+        ],
+        "imports": [],
+        "signatures": [
+          "def login_user(email, password)"
+        ]
+      },
+      "mtime": 1794288604121,
+      "size": 134
+    },
+    "auth/login.rs": {
+      "hash": "59f6c13695d024df85843e2decfb827cb6490f6cc14cc789e4c433e06b8db102",
+      "category": "auth",
+      "fingerprint": "SessionStore,login_user||1",
+      "exports": [
+        "SessionStore",
+        "login_user"
+      ],
+      "data": {
+        "lang": "rs",
+        "normalizedContentHash": "479739300d1bc41aea5c27be2af17fa950319af310a8bbd5873cda14ecde1c4f",
+        "exports": [
+          {
+            "name": "login_user",
+            "line": 1,
+            "column": 0,
+            "kind": "function",
+            "signature": "fn login_user(email, password)"
+          },
+          {
+            "name": "SessionStore",
+            "line": 5,
+            "column": 0,
+            "kind": "class"
+          }
+        ],
+        "imports": [],
+        "signatures": [
+          "fn login_user(email, password)"
+        ]
+      },
+      "mtime": 1794288604132,
+      "size": 136
+    },
+    "utils/format.ts": {
+      "hash": "d5259cf531967700ff538df4a0d347db50c21cab0822d5cdfe7d8ce05fb7ba2e",
+      "category": "utils",
+      "fingerprint": "formatLabel||1",
+      "exports": [
+        "formatLabel"
+      ],
+      "data": {
+        "lang": "ts",
+        "normalizedContentHash": "f7fc79c1e533f9603ee33f9061c0729049693eeab4f1b2da354dcb849d9337a0",
+        "exports": [
+          {
+            "name": "formatLabel",
+            "line": 1,
+            "column": 7,
+            "kind": "function",
+            "signature": "function formatLabel(value)"
+          }
+        ],
+        "imports": [],
+        "signatures": [
+          "function formatLabel(value)"
+        ]
+      },
+      "mtime": 1794288604246,
+      "size": 81
+    }
+  }
+}
