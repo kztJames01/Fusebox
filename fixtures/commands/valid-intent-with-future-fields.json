@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "1",
+  "sessionId": "sess-fixture-001",
+  "workspaceRoots": ["/project"],
+  "readRoots": ["/project"],
+  "writeRoots": ["/project/src", "/project/target"],
+  "protectedRoots": [],
+  "allowedCommandClasses": ["build", "test", "format"],
+  "networkPolicy": "deny_all",
+  "approvalPolicy": "escalate",
+  "expiresAt": null,
+  "policyHash": null,
+  "unknownFutureField": "must be ignored by older readers"
+}

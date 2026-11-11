@@ -1,0 +1,43 @@
+{
+  "_description": "Policy outcome fixtures — one object per verdict type for testing.",
+  "allow": {
+    "verdict": "allow",
+    "ruleId": "in-scope-build",
+    "reasonCode": "WITHIN_WRITE_ROOT",
+    "predictedTargets": ["/project/target"],
+    "resolutionStatus": "resolved",
+    "requiredBackend": null,
+    "userActionRequired": false,
+    "policyHash": "ph"
+  },
+  "deny": {
+    "verdict": "deny",
+    "ruleId": "outside-write-root",
+    "reasonCode": "OUTSIDE_WRITE_ROOT",
+    "predictedTargets": ["/etc/passwd"],
+    "resolutionStatus": "resolved",
+    "requiredBackend": null,
+    "userActionRequired": false,
+    "policyHash": "ph"
+  },
+  "escalate": {
+    "verdict": "escalate",
+    "ruleId": "protected-path",
+    "reasonCode": "PROTECTED_ROOT_WRITE",
+    "predictedTargets": ["/project/.fusebox/policy.json"],
+    "resolutionStatus": "resolved",
+    "requiredBackend": null,
+    "userActionRequired": true,
+    "policyHash": "ph"
+  },
+  "unsupported": {
+    "verdict": "unsupported",
+    "ruleId": null,
+    "reasonCode": "RESOLVER_UNSUPPORTED_SYNTAX",
+    "predictedTargets": [],
+    "resolutionStatus": "unsupported",
+    "requiredBackend": null,
+    "userActionRequired": false,
+    "policyHash": "ph"
+  }
+}

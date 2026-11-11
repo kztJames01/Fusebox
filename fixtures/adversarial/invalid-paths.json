@@ -1,0 +1,38 @@
+[
+  {
+    "_description": "Path traversal attempt — must never reach a write root.",
+    "executable": "/bin/rm",
+    "argv": ["-rf", "/project/src/../../etc/passwd"],
+    "expectedVerdict": "deny",
+    "expectedReasonCode": "OUTSIDE_WRITE_ROOT"
+  },
+  {
+    "_description": "Null byte injection in path argument.",
+    "executable": "/bin/cat",
+    "argv": ["/project/src/main.rs\u0000/etc/shadow"],
+    "expectedVerdict": "deny",
+    "expectedReasonCode": "INVALID_PATH"
+  },
+  {
+    "_description": "Attempt to write to a protected root.",
+    "executable": "/bin/rm",
+    "argv": ["/project/.fusebox/policy.json"],
+    "expectedVerdict": "deny",
+    "expectedReasonCode": "PROTECTED_ROOT_WRITE"
+  },
+  {
+    "_description": "Empty executable path.",
+    "executable": "",
+    "argv": [],
+    "expectedVerdict": "deny",
+    "expectedReasonCode": "INVALID_EXECUTABLE"
+  },
+  {
+    "_description": "cwd outside workspace_roots.",
+    "executable": "/usr/bin/cargo",
+    "argv": ["test"],
+    "cwd": "/tmp/attacker",
+    "expectedVerdict": "deny",
+    "expectedReasonCode": "CWD_OUTSIDE_WORKSPACE"
+  }
+]

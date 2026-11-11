@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "1",
+  "receiptId": "rcpt-fixture-001",
+  "sequence": 0,
+  "recordedAt": "2026-11-10T03:00:00Z",
+  "sessionId": "sess-fixture-001",
+  "requestId": "req-fixture-001",
+  "requestSummary": {
+    "executableName": "cargo",
+    "argc": 3,
+    "cwd": "/project"
+  },
+  "policyDecision": {
+    "verdict": "allow",
+    "ruleId": "in-scope-build",
+    "reasonCode": "WITHIN_WRITE_ROOT",
+    "predictedTargets": ["/project/target"],
+    "resolutionStatus": "resolved",
+    "requiredBackend": null,
+    "userActionRequired": false,
+    "policyHash": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "enforcement": {
+    "backend": "none",
+    "applied": false,
+    "detectedAbi": null,
+    "note": "enforcement not yet implemented"
+  },
+  "processOutcome": {
+    "state": "completed",
+    "exitCode": 0,
+    "durationMs": 1234,
+    "signal": null
+  },
+  "outputDigests": null,
+  "previousHash": "",
+  "recordHash": "0000000000000000000000000000000000000000000000000000000000000000"
+}

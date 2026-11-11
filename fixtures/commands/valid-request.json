@@ -1,0 +1,11 @@
+{
+  "protocolVersion": "1",
+  "requestId": "req-fixture-001",
+  "sessionId": "sess-fixture-001",
+  "executable": "/usr/bin/cargo",
+  "argv": ["test", "--", "--nocapture"],
+  "cwd": "/project",
+  "envAllowlist": ["RUST_BACKTRACE", "CARGO_TERM_COLOR"],
+  "timeoutMs": 30000,
+  "requestedCapabilities": []
+}
