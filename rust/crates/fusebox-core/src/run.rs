@@ -17,19 +17,19 @@
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
+use crate::contracts::SCHEMA_VERSION;
 use crate::contracts::{ExecRequest, IntentContract, PolicyDecision};
 use crate::policy::policy_dry_run;
 use crate::receipt::{
     CommandReceipt, EnforcementRecord, OutputDigests, ProcessOutcome, ProcessState, RequestSummary,
 };
-use crate::contracts::SCHEMA_VERSION;
 use crate::resolver::Resolution;
 use crate::verify::hash_receipt;
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
 /// Configuration for `fusebox run`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct RunConfig {
     /// Whether to allow the process to run even if the policy would escalate.
     /// This is set by the CLI `--allow-escalate` flag, which requires a human
@@ -41,16 +41,6 @@ pub struct RunConfig {
     /// Maximum wall-clock time before the child is killed. `None` means no
     /// timeout beyond the request's `timeout_ms` field.
     pub timeout_override: Option<Duration>,
-}
-
-impl Default for RunConfig {
-    fn default() -> Self {
-        RunConfig {
-            allow_escalate: false,
-            capture_output: false,
-            timeout_override: None,
-        }
-    }
 }
 
 /// The result of a `fusebox run` invocation.
@@ -73,7 +63,7 @@ pub struct RunResult {
 #[derive(Debug)]
 pub enum RunError {
     /// Policy denied the execution.
-    Denied(PolicyDecision, Resolution),
+    Denied(Box<PolicyDecision>, Box<Resolution>),
     /// OS-level spawn failed.
     SpawnFailed(String),
     /// Wait for child failed.
@@ -147,7 +137,10 @@ pub fn run(
         );
         let hash = hash_receipt(&receipt).map_err(RunError::HashFailed)?;
         receipt.record_hash = hash;
-        return Err(RunError::Denied(policy_decision, resolution));
+        return Err(RunError::Denied(
+            Box::new(policy_decision),
+            Box::new(resolution),
+        ));
     }
 
     // Resolve timeout.
@@ -177,20 +170,23 @@ pub fn run(
         cmd.stderr(std::process::Stdio::inherit());
     }
 
-    let mut child = cmd.spawn().map_err(|e| RunError::SpawnFailed(e.to_string()))?;
+    let mut child = cmd
+        .spawn()
+        .map_err(|e| RunError::SpawnFailed(e.to_string()))?;
 
     // Wait with optional timeout.
     let (exit_status, stdout_bytes, stderr_bytes): (Option<i32>, Option<Vec<u8>>, Option<Vec<u8>>) =
         if let Some(t) = timeout {
-            wait_with_timeout(&mut child, t, config.capture_output)
-                .map_err(RunError::WaitFailed)?
+            wait_with_timeout(&mut child, t, config.capture_output).map_err(RunError::WaitFailed)?
         } else if config.capture_output {
             let out = child
                 .wait_with_output()
                 .map_err(|e| RunError::WaitFailed(e.to_string()))?;
             (out.status.code(), Some(out.stdout), Some(out.stderr))
         } else {
-            let status = child.wait().map_err(|e| RunError::WaitFailed(e.to_string()))?;
+            let status = child
+                .wait()
+                .map_err(|e| RunError::WaitFailed(e.to_string()))?;
             (status.code(), None, None)
         };
 
@@ -306,7 +302,20 @@ fn days_to_ymd(days: u64) -> (u64, u64, u64) {
         y += 1;
     }
     let leap = is_leap(y);
-    let month_days = [31u64, if leap { 29 } else { 28 }, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    let month_days = [
+        31u64,
+        if leap { 29 } else { 28 },
+        31,
+        30,
+        31,
+        30,
+        31,
+        31,
+        30,
+        31,
+        30,
+        31,
+    ];
     let mut mo = 1u64;
     for &md in &month_days {
         if d < md {
@@ -319,7 +328,7 @@ fn days_to_ymd(days: u64) -> (u64, u64, u64) {
 }
 
 fn is_leap(y: u64) -> bool {
-    (y % 4 == 0 && y % 100 != 0) || y % 400 == 0
+    y.is_multiple_of(4) && (!y.is_multiple_of(100) || y.is_multiple_of(400))
 }
 
 fn build_env(allowlist: &[String]) -> HashMap<String, String> {
@@ -377,11 +386,13 @@ fn build_denied_receipt(
     }
 }
 
+type WaitResult = Result<(Option<i32>, Option<Vec<u8>>, Option<Vec<u8>>), String>;
+
 fn wait_with_timeout(
     child: &mut std::process::Child,
     timeout: Duration,
     _capture: bool,
-) -> Result<(Option<i32>, Option<Vec<u8>>, Option<Vec<u8>>), String> {
+) -> WaitResult {
     use std::time::Instant;
     let start = Instant::now();
     let poll_interval = Duration::from_millis(10);
@@ -442,7 +453,10 @@ mod tests {
 
     #[test]
     fn run_empty_executable_is_denied() {
-        let cwd = std::env::current_dir().unwrap().to_string_lossy().to_string();
+        let cwd = std::env::current_dir()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
         let contract = base_contract(&cwd);
         let req = request("", &[], &cwd);
         let result = run(&req, &contract, "rcpt-001", 0, "", &RunConfig::default());
@@ -454,19 +468,28 @@ mod tests {
         let contract = base_contract("/project");
         let req = request("/bin/echo", &["hello"], "/tmp/attacker");
         let result = run(&req, &contract, "rcpt-002", 0, "", &RunConfig::default());
-        assert!(matches!(result, Err(RunError::Denied(ref d, _)) if d.reason_code == "CWD_OUTSIDE_WORKSPACE"));
-        let Err(RunError::Denied(d, _)) = result else { unreachable!() };
+        assert!(
+            matches!(result, Err(RunError::Denied(ref d, _)) if d.reason_code == "CWD_OUTSIDE_WORKSPACE")
+        );
+        let Err(RunError::Denied(d, _)) = result else {
+            unreachable!()
+        };
         assert_eq!(d.reason_code, "CWD_OUTSIDE_WORKSPACE");
     }
 
     #[test]
     fn run_unsupported_command_is_denied_in_strict_policy() {
-        let cwd = std::env::current_dir().unwrap().to_string_lossy().to_string();
+        let cwd = std::env::current_dir()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
         let contract = base_contract(&cwd);
         // "bash" is unsupported by the resolver; strict policy → deny.
         let req = request("bash", &["-c", "echo hi"], &cwd);
         let result = run(&req, &contract, "rcpt-003", 0, "", &RunConfig::default());
-        assert!(matches!(result, Err(RunError::Denied(ref d, _)) if d.reason_code == "UNSUPPORTED_COMMAND"));
+        assert!(
+            matches!(result, Err(RunError::Denied(ref d, _)) if d.reason_code == "UNSUPPORTED_COMMAND")
+        );
     }
 
     // ── Green-phase: operations that should succeed ───────────────────────────
@@ -474,7 +497,10 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn run_true_command_succeeds() {
-        let cwd = std::env::current_dir().unwrap().to_string_lossy().to_string();
+        let cwd = std::env::current_dir()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
         let contract = base_contract(&cwd);
         // /usr/bin/true — unsupported by resolver → deny (strict policy).
         // Use /bin/echo instead with a write to cwd.
@@ -495,10 +521,20 @@ mod tests {
     #[test]
     fn run_receipt_has_correct_session_and_sequence() {
         // Test that the receipt is correctly assembled even on denial.
-        let cwd = std::env::current_dir().unwrap().to_string_lossy().to_string();
+        let cwd = std::env::current_dir()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
         let contract = base_contract(&cwd);
         let req = request("", &[], &cwd);
-        let err = run(&req, &contract, "rcpt-seq-test", 7, "prev-hash", &RunConfig::default());
+        let err = run(
+            &req,
+            &contract,
+            "rcpt-seq-test",
+            7,
+            "prev-hash",
+            &RunConfig::default(),
+        );
         // Denied — but we want to check the receipt structure.
         // Since run returns Err on deny, the receipt is inside RunError::Denied.
         // The current implementation builds the receipt before returning Err.
@@ -521,10 +557,15 @@ mod tests {
 
     #[test]
     fn null_byte_in_executable_is_denied() {
-        let cwd = std::env::current_dir().unwrap().to_string_lossy().to_string();
+        let cwd = std::env::current_dir()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
         let contract = base_contract(&cwd);
         let req = request("/bin/rm\x00evil", &[], &cwd);
         let result = run(&req, &contract, "rcpt-null", 0, "", &RunConfig::default());
-        assert!(matches!(result, Err(RunError::Denied(ref d, _)) if d.reason_code == "INVALID_PATH"));
+        assert!(
+            matches!(result, Err(RunError::Denied(ref d, _)) if d.reason_code == "INVALID_PATH")
+        );
     }
 }

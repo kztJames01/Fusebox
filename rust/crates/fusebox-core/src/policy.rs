@@ -17,7 +17,9 @@
 
 use sha2::{Digest, Sha256};
 
-use crate::contracts::{ApprovalPolicy, ExecRequest, IntentContract, PolicyDecision, ResolutionStatus, Verdict};
+use crate::contracts::{
+    ApprovalPolicy, ExecRequest, IntentContract, PolicyDecision, ResolutionStatus, Verdict,
+};
 use crate::resolver::{resolve_argv, Confidence, Resolution};
 
 // ── Public entry points ───────────────────────────────────────────────────────
@@ -242,7 +244,7 @@ pub fn policy_dry_run(
 pub enum ScopeExpansionResult {
     /// The human approved the expansion; `updated_contract` has the new scope.
     Approved {
-        updated_contract: IntentContract,
+        updated_contract: Box<IntentContract>,
         /// New policy hash for the updated contract.
         new_policy_hash: String,
     },
@@ -282,7 +284,7 @@ pub fn request_scope_expansion(
     updated.policy_hash = Some(new_policy_hash.clone());
 
     ScopeExpansionResult::Approved {
-        updated_contract: updated,
+        updated_contract: Box::new(updated),
         new_policy_hash,
     }
 }
@@ -333,8 +335,7 @@ fn path_is_prefix(prefix: &str, path: &str) -> bool {
 fn is_destructive_command(class: &crate::resolver::CommandClass) -> bool {
     matches!(
         class,
-        crate::resolver::CommandClass::Remove
-            | crate::resolver::CommandClass::Move
+        crate::resolver::CommandClass::Remove | crate::resolver::CommandClass::Move
     )
 }
 
@@ -352,7 +353,6 @@ fn resolution_status_from(resolution: &Resolution) -> ResolutionStatus {
 mod tests {
     use super::*;
     use crate::contracts::{ApprovalPolicy, NetworkPolicy, SCHEMA_VERSION};
-    use crate::resolver::CommandClass;
 
     fn base_contract() -> IntentContract {
         IntentContract {
@@ -440,17 +440,18 @@ mod tests {
             &base_contract(),
         );
         // Resolved to /etc/passwd — outside write root.
-        assert!(resolution.predicted_targets.iter().any(|t| t.path == "/etc/passwd"));
+        assert!(resolution
+            .predicted_targets
+            .iter()
+            .any(|t| t.path == "/etc/passwd"));
         assert_eq!(decision.verdict, Verdict::Deny);
         assert_eq!(decision.reason_code, "OUTSIDE_WRITE_ROOT");
     }
 
     #[test]
     fn deny_unsupported_command_in_strict_policy() {
-        let (decision, _) = policy_dry_run(
-            &request_for("bash", &["-c", "rm -rf /"]),
-            &base_contract(),
-        );
+        let (decision, _) =
+            policy_dry_run(&request_for("bash", &["-c", "rm -rf /"]), &base_contract());
         assert_eq!(decision.verdict, Verdict::Deny);
         assert_eq!(decision.reason_code, "UNSUPPORTED_COMMAND");
     }
@@ -471,10 +472,8 @@ mod tests {
     fn allow_cargo_test_as_unsupported_command_logs() {
         // cargo is not a supported resolver command → UNSUPPORTED_COMMAND.
         // Default approval policy is Deny so this returns Deny.
-        let (decision, _) = policy_dry_run(
-            &request_for("/usr/bin/cargo", &["test"]),
-            &base_contract(),
-        );
+        let (decision, _) =
+            policy_dry_run(&request_for("/usr/bin/cargo", &["test"]), &base_contract());
         // cargo is unsupported, strict policy → Deny
         assert_eq!(decision.verdict, Verdict::Deny);
         assert_eq!(decision.reason_code, "UNSUPPORTED_COMMAND");
@@ -484,10 +483,7 @@ mod tests {
     fn allow_unsupported_command_with_log_policy() {
         let mut contract = base_contract();
         contract.approval_policy = ApprovalPolicy::Log;
-        let (decision, _) = policy_dry_run(
-            &request_for("/usr/bin/cargo", &["test"]),
-            &contract,
-        );
+        let (decision, _) = policy_dry_run(&request_for("/usr/bin/cargo", &["test"]), &contract);
         // Unsupported → Verdict::Unsupported with log policy.
         assert_eq!(decision.verdict, Verdict::Unsupported);
     }
@@ -496,10 +492,7 @@ mod tests {
     fn escalate_unsupported_command_with_escalate_policy() {
         let mut contract = base_contract();
         contract.approval_policy = ApprovalPolicy::Escalate;
-        let (decision, _) = policy_dry_run(
-            &request_for("/usr/bin/cargo", &["test"]),
-            &contract,
-        );
+        let (decision, _) = policy_dry_run(&request_for("/usr/bin/cargo", &["test"]), &contract);
         assert_eq!(decision.verdict, Verdict::Escalate);
         assert!(decision.user_action_required);
     }
@@ -568,7 +561,9 @@ mod tests {
                 updated_contract,
                 new_policy_hash,
             } => {
-                assert!(updated_contract.write_roots.contains(&"/project/extra".to_string()));
+                assert!(updated_contract
+                    .write_roots
+                    .contains(&"/project/extra".to_string()));
                 assert_eq!(updated_contract.policy_hash, Some(new_policy_hash));
             }
             ScopeExpansionResult::Denied => panic!("expected Approved"),
@@ -597,7 +592,9 @@ mod tests {
             |_path, _reason| true,
         );
         match result {
-            ScopeExpansionResult::Approved { updated_contract, .. } => {
+            ScopeExpansionResult::Approved {
+                updated_contract, ..
+            } => {
                 let count = updated_contract
                     .write_roots
                     .iter()

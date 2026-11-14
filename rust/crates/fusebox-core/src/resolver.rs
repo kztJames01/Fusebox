@@ -245,7 +245,12 @@ fn detect_unsupported_syntax(raw: &str) -> Option<String> {
                 // but anything structural (subshell, arithmetic, brace) is unsupported.
                 if i + 1 < len {
                     match chars[i + 1] {
-                        '(' => return Some("command substitution/arithmetic $(...) is not supported".to_string()),
+                        '(' => {
+                            return Some(
+                                "command substitution/arithmetic $(...) is not supported"
+                                    .to_string(),
+                            )
+                        }
                         '{' => {
                             // Reject all ${} forms — variable expansion is not supported.
                             return Some("variable expansion ${...} is not supported".to_string());
@@ -330,19 +335,17 @@ fn tokenize_shell(raw: &str) -> Result<Vec<String>, String> {
                             i += 1;
                             break;
                         }
-                        '\\' if i + 1 < len => {
-                            match chars[i + 1] {
-                                '"' | '\\' | '$' | '`' | '\n' => {
-                                    current.push(chars[i + 1]);
-                                    i += 2;
-                                }
-                                _ => {
-                                    current.push('\\');
-                                    current.push(chars[i + 1]);
-                                    i += 2;
-                                }
+                        '\\' if i + 1 < len => match chars[i + 1] {
+                            '"' | '\\' | '$' | '`' | '\n' => {
+                                current.push(chars[i + 1]);
+                                i += 2;
                             }
-                        }
+                            _ => {
+                                current.push('\\');
+                                current.push(chars[i + 1]);
+                                i += 2;
+                            }
+                        },
                         ch => {
                             current.push(ch);
                             i += 1;
@@ -678,9 +681,7 @@ pub fn normalize_path(path: &str, cwd: &str) -> String {
     for (i, c) in components.iter().enumerate() {
         if i == 0 && *c == "/" {
             result.push('/');
-        } else if i == 0 {
-            result.push_str(c);
-        } else if result.ends_with('/') {
+        } else if result.is_empty() || result.ends_with('/') {
             result.push_str(c);
         } else {
             result.push('/');
@@ -820,7 +821,11 @@ mod tests {
 
     #[test]
     fn rm_absolute_path_resolves() {
-        let r = resolve_argv("/bin/rm", &["-rf".into(), "/project/src".into()], "/project");
+        let r = resolve_argv(
+            "/bin/rm",
+            &["-rf".into(), "/project/src".into()],
+            "/project",
+        );
         assert_eq!(r.confidence, Confidence::Resolved);
         assert_eq!(r.predicted_targets.len(), 1);
         assert_eq!(r.predicted_targets[0].path, "/project/src");
@@ -837,7 +842,11 @@ mod tests {
     #[test]
     fn rm_dotdot_traversal_resolves_to_parent() {
         // The resolver MUST resolve this to the dangerous parent, not reject silently.
-        let r = resolve_argv("/bin/rm", &["-rf".into(), "/project/src/../../etc/passwd".into()], "/project");
+        let r = resolve_argv(
+            "/bin/rm",
+            &["-rf".into(), "/project/src/../../etc/passwd".into()],
+            "/project",
+        );
         assert_eq!(r.confidence, Confidence::Resolved);
         assert_eq!(r.predicted_targets[0].path, "/etc/passwd");
     }
@@ -852,7 +861,11 @@ mod tests {
 
     #[test]
     fn rm_null_byte_path_is_partial_with_warning() {
-        let r = resolve_argv("rm", &["/project/src/main.rs\x00/etc/shadow".into()], "/project");
+        let r = resolve_argv(
+            "rm",
+            &["/project/src/main.rs\x00/etc/shadow".into()],
+            "/project",
+        );
         assert_eq!(r.confidence, Confidence::Partial);
         assert!(r.warnings.iter().any(|w| w.contains("null byte")));
     }
@@ -861,7 +874,11 @@ mod tests {
 
     #[test]
     fn mv_resolves_src_and_dst() {
-        let r = resolve_argv("mv", &["/project/old.txt".into(), "/project/new.txt".into()], "/project");
+        let r = resolve_argv(
+            "mv",
+            &["/project/old.txt".into(), "/project/new.txt".into()],
+            "/project",
+        );
         assert_eq!(r.confidence, Confidence::Resolved);
         assert_eq!(r.predicted_targets.len(), 2);
     }
@@ -896,11 +913,18 @@ mod tests {
         // With -0, spaces are not delimiters — full path is preserved.
         let r = resolve_argv(
             "xargs",
-            &["-0".into(), "dirname".into(), "/project/my project/file.txt".into()],
+            &[
+                "-0".into(),
+                "dirname".into(),
+                "/project/my project/file.txt".into(),
+            ],
             "/project",
         );
         // dirname of the full path "/project/my project/file.txt" is "/project/my project"
-        assert!(r.predicted_targets.iter().any(|t| t.path == "/project/my project"));
+        assert!(r
+            .predicted_targets
+            .iter()
+            .any(|t| t.path == "/project/my project"));
         // No warning about space-splitting.
         assert!(!r.warnings.iter().any(|w| w.contains("splits to")));
     }
@@ -908,18 +932,22 @@ mod tests {
     #[test]
     fn xargs_dirname_shell_string_spaced_path() {
         // From a raw shell string — the incident class.
-        let r = resolve_shell_string(
-            "xargs dirname /project/my\\ project/file.txt",
-            "/project",
-        );
+        let r = resolve_shell_string("xargs dirname /project/my\\ project/file.txt", "/project");
         // Backslash-escaped space → single token → no xargs split → dirname of full path.
-        assert!(r.predicted_targets.iter().any(|t| t.path == "/project/my project"));
+        assert!(r
+            .predicted_targets
+            .iter()
+            .any(|t| t.path == "/project/my project"));
         assert_eq!(r.confidence, Confidence::Resolved);
     }
 
     #[test]
     fn xargs_with_unsupported_sub_command_is_unsupported() {
-        let r = resolve_argv("xargs", &["bash".into(), "-c".into(), "rm {}".into()], "/project");
+        let r = resolve_argv(
+            "xargs",
+            &["bash".into(), "-c".into(), "rm {}".into()],
+            "/project",
+        );
         assert_eq!(r.confidence, Confidence::Unsupported);
         assert!(!r.supported);
     }
@@ -943,7 +971,11 @@ mod tests {
 
     #[test]
     fn unsupported_command_returns_unsupported() {
-        let r = resolve_argv("find", &["/project".into(), "-name".into(), "*.rs".into()], "/project");
+        let r = resolve_argv(
+            "find",
+            &["/project".into(), "-name".into(), "*.rs".into()],
+            "/project",
+        );
         assert_eq!(r.confidence, Confidence::Unsupported);
         assert!(!r.supported);
     }
@@ -964,17 +996,26 @@ mod tests {
 
     #[test]
     fn normalize_absolute_dotdot_traversal() {
-        assert_eq!(normalize_path("/project/src/../../etc/passwd", "/"), "/etc/passwd");
+        assert_eq!(
+            normalize_path("/project/src/../../etc/passwd", "/"),
+            "/etc/passwd"
+        );
     }
 
     #[test]
     fn normalize_relative_path_against_cwd() {
-        assert_eq!(normalize_path("src/main.rs", "/project"), "/project/src/main.rs");
+        assert_eq!(
+            normalize_path("src/main.rs", "/project"),
+            "/project/src/main.rs"
+        );
     }
 
     #[test]
     fn normalize_dot_components_stripped() {
-        assert_eq!(normalize_path("/project/./src/./main.rs", "/project"), "/project/src/main.rs");
+        assert_eq!(
+            normalize_path("/project/./src/./main.rs", "/project"),
+            "/project/src/main.rs"
+        );
     }
 
     #[test]

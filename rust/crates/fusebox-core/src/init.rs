@@ -139,15 +139,18 @@ pub fn load_policy(workspace_dir: &str) -> Result<Option<IntentContract>, InitEr
     if !path.exists() {
         return Ok(None);
     }
-    let content = std::fs::read_to_string(&path)
-        .map_err(|e| InitError::ReadFailed(e.to_string()))?;
+    let content =
+        std::fs::read_to_string(&path).map_err(|e| InitError::ReadFailed(e.to_string()))?;
     let contract: IntentContract = serde_json::from_str(&content)
         .map_err(|e| InitError::ReadFailed(format!("parse error: {e}")))?;
     Ok(Some(contract))
 }
 
 /// Persist an updated policy file. The `policyHash` field is recomputed.
-pub fn save_policy(workspace_dir: &str, contract: &mut IntentContract) -> Result<PathBuf, InitError> {
+pub fn save_policy(
+    workspace_dir: &str,
+    contract: &mut IntentContract,
+) -> Result<PathBuf, InitError> {
     let path = Path::new(workspace_dir).join(POLICY_FILE_REL);
     let hash = compute_policy_hash(contract);
     contract.policy_hash = Some(hash);
@@ -175,11 +178,10 @@ fn write_policy_file(path: &Path, contract: &IntentContract) -> Result<(), InitE
     std::fs::write(&tmp_path, json.as_bytes())
         .map_err(|e| InitError::WriteFailed(e.to_string()))?;
 
-    std::fs::rename(&tmp_path, path)
-        .map_err(|e| {
-            let _ = std::fs::remove_file(&tmp_path);
-            InitError::WriteFailed(e.to_string())
-        })?;
+    std::fs::rename(&tmp_path, path).map_err(|e| {
+        let _ = std::fs::remove_file(&tmp_path);
+        InitError::WriteFailed(e.to_string())
+    })?;
 
     Ok(())
 }
@@ -195,11 +197,15 @@ pub fn validate_policy_value(value: &Value) -> Result<(), String> {
         None => return Err("missing schemaVersion".to_string()),
     }
 
-    if obj.get("sessionId").and_then(|v| v.as_str()).map_or(true, |s| s.is_empty()) {
+    if obj
+        .get("sessionId")
+        .and_then(|v| v.as_str())
+        .is_none_or(|s| s.is_empty())
+    {
         return Err("sessionId must be a non-empty string".to_string());
     }
 
-    if !obj.get("workspaceRoots").map_or(false, |v| v.is_array()) {
+    if !obj.get("workspaceRoots").is_some_and(|v| v.is_array()) {
         return Err("workspaceRoots must be an array".to_string());
     }
 

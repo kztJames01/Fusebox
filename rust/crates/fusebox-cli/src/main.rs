@@ -364,7 +364,10 @@ fn run_init_command(args: &[String]) -> ExitCode {
                 "overwritten": result.overwritten,
                 "policy_hash": result.contract.policy_hash,
             });
-            println!("{}", serde_json::to_string_pretty(&output).unwrap_or_default());
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&output).unwrap_or_default()
+            );
             ExitCode::SUCCESS
         }
         Err(e) => {
@@ -465,7 +468,10 @@ fn run_run_command(args: &[String]) -> ExitCode {
                 "exit_code": result.process_outcome.exit_code,
                 "duration_ms": result.process_outcome.duration_ms,
             });
-            println!("{}", serde_json::to_string_pretty(&output).unwrap_or_default());
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&output).unwrap_or_default()
+            );
             match result.process_outcome.exit_code {
                 Some(0) | None => ExitCode::SUCCESS,
                 Some(code) => ExitCode::from(code.clamp(1, 125) as u8),
@@ -479,7 +485,10 @@ fn run_run_command(args: &[String]) -> ExitCode {
                 "predicted_targets": decision.predicted_targets,
                 "user_action_required": decision.user_action_required,
             });
-            eprintln!("{}", serde_json::to_string_pretty(&output).unwrap_or_default());
+            eprintln!(
+                "{}",
+                serde_json::to_string_pretty(&output).unwrap_or_default()
+            );
             ExitCode::from(1)
         }
         Err(e) => {
@@ -498,7 +507,9 @@ fn run_policy_command(args: &[String]) -> ExitCode {
     match subcommand {
         Some("dry-run") => run_policy_dry_run_command(&args[3..]),
         Some("--help") | Some("-h") | Some("help") | None => {
-            println!("Usage: fusebox policy dry-run --executable <exe> [--argv <arg>...] [--cwd <dir>]");
+            println!(
+                "Usage: fusebox policy dry-run --executable <exe> [--argv <arg>...] [--cwd <dir>]"
+            );
             println!("       fusebox policy dry-run --json <request-json>");
             ExitCode::SUCCESS
         }
@@ -627,7 +638,10 @@ fn run_policy_dry_run_command(flags: &[String]) -> ExitCode {
         }
     });
 
-    println!("{}", serde_json::to_string_pretty(&output).unwrap_or_default());
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&output).unwrap_or_default()
+    );
 
     // Exit code reflects the verdict: 0 = allow/log, 1 = deny/escalate/unsupported.
     match decision.verdict {
