@@ -63,6 +63,8 @@ pub struct LandlockProbe {
 /// rights that are required will cause `apply_ruleset` to return an error.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FsRight {
+    /// Execute a file. Without this right a confined child cannot `exec` at all.
+    Execute,
     /// Read file contents.
     ReadFile,
     /// Read directory contents.
@@ -162,11 +164,16 @@ mod linux_impl {
 
     // Landlock ruleset attribute layout.
     // struct landlock_ruleset_attr { __u64 handled_access_fs; __u64 handled_access_net; }
+    //
+    // Network rights are never handled in v1, so only the first field is
+    // passed. Kernels older than ABI v4 reject the 16-byte struct with E2BIG.
     #[repr(C)]
     struct LandlockRulesetAttr {
         handled_access_fs: u64,
-        handled_access_net: u64,
     }
+
+    /// Size sent to `landlock_create_ruleset`: one `__u64` (`handled_access_fs`).
+    const RULESET_ATTR_SIZE: usize = std::mem::size_of::<LandlockRulesetAttr>();
 
     // landlock_path_beneath_attr layout.
     // struct landlock_path_beneath_attr { __u64 allowed_access; __s32 parent_fd; }
@@ -277,6 +284,7 @@ mod linux_impl {
     /// version that introduced it.
     fn fs_right_to_bits(right: &FsRight) -> (u64, u32) {
         match right {
+            FsRight::Execute => (LL_EXEC_FILE, 1),
             FsRight::ReadFile => (LL_READ_FILE, 1),
             FsRight::ReadDir => (LL_READ_DIR, 1),
             FsRight::WriteFile => (LL_WRITE_FILE, 1),
@@ -347,11 +355,9 @@ mod linux_impl {
             // Create ruleset with no rights — all access denied.
             let attr = LandlockRulesetAttr {
                 handled_access_fs: all_fs_rights_for_abi(abi_version),
-                handled_access_net: 0,
             };
-            let attr_size = std::mem::size_of::<LandlockRulesetAttr>();
 
-            let fd = create_ruleset_fd(&attr, attr_size)?;
+            let fd = create_ruleset_fd(&attr, RULESET_ATTR_SIZE)?;
             restrict_self(fd)?;
             unsafe { libc::close(fd) };
             return Ok(());
@@ -360,11 +366,9 @@ mod linux_impl {
         // Create the ruleset.
         let attr = LandlockRulesetAttr {
             handled_access_fs: all_fs_rights_for_abi(abi_version),
-            handled_access_net: 0,
         };
-        let attr_size = std::mem::size_of::<LandlockRulesetAttr>();
 
-        let ruleset_fd = create_ruleset_fd(&attr, attr_size)?;
+        let ruleset_fd = create_ruleset_fd(&attr, RULESET_ATTR_SIZE)?;
 
         // Add path_beneath rules.
         for rule in rules {
@@ -554,7 +558,7 @@ pub fn workspace_ruleset(workspace_root: &str, allow_writes: bool) -> Vec<FsRule
     let mut rules = Vec::new();
 
     // Workspace: read + exec always; write/delete when permitted.
-    let mut ws_rights = vec![FsRight::ReadFile, FsRight::ReadDir];
+    let mut ws_rights = vec![FsRight::Execute, FsRight::ReadFile, FsRight::ReadDir];
     if allow_writes {
         ws_rights.push(FsRight::WriteFile);
         ws_rights.push(FsRight::MakeFile);
@@ -569,11 +573,19 @@ pub fn workspace_ruleset(workspace_root: &str, allow_writes: bool) -> Vec<FsRule
     });
 
     // Common Linux runtime paths — read + exec only.
-    let runtime_paths = ["/usr", "/lib", "/lib64", "/lib32", "/etc/ld.so.cache"];
+    let runtime_paths = [
+        "/usr",
+        "/bin",
+        "/sbin",
+        "/lib",
+        "/lib64",
+        "/lib32",
+        "/etc/ld.so.cache",
+    ];
     for path in &runtime_paths {
         rules.push(FsRule {
             path: path.to_string(),
-            rights: vec![FsRight::ReadFile, FsRight::ReadDir],
+            rights: vec![FsRight::Execute, FsRight::ReadFile, FsRight::ReadDir],
         });
     }
 
@@ -581,6 +593,12 @@ pub fn workspace_ruleset(workspace_root: &str, allow_writes: bool) -> Vec<FsRule
     rules.push(FsRule {
         path: "/proc/self".to_string(),
         rights: vec![FsRight::ReadFile, FsRight::ReadDir],
+    });
+
+    // /dev/null is written by most programs; deny the rest of /dev.
+    rules.push(FsRule {
+        path: "/dev/null".to_string(),
+        rights: vec![FsRight::ReadFile, FsRight::WriteFile],
     });
 
     rules
@@ -673,6 +691,21 @@ mod tests {
     fn workspace_ruleset_includes_workspace_root() {
         let rules = workspace_ruleset("/project", true);
         assert!(rules.iter().any(|r| r.path == "/project"));
+    }
+
+    #[test]
+    fn workspace_ruleset_grants_execute() {
+        let rules = workspace_ruleset("/project", true);
+        for path in ["/project", "/usr"] {
+            let rule = rules
+                .iter()
+                .find(|r| r.path == path)
+                .unwrap_or_else(|| panic!("missing runtime rule for {path}"));
+            assert!(
+                rule.rights.contains(&FsRight::Execute),
+                "{path} must grant EXECUTE or the confined child cannot start"
+            );
+        }
     }
 
     #[test]
