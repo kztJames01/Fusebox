@@ -7,10 +7,11 @@
 
 pub mod contracts;
 pub mod framing;
-pub mod intent_io;
+pub mod init;
 pub mod landlock;
 pub mod policy;
 pub mod proxy;
 pub mod receipt;
 pub mod resolver;
+pub mod run;
 pub mod verify;

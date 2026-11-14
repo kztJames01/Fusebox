@@ -1,0 +1,76 @@
+[
+  {
+    "_description": "xargs dirname with unquoted spaced path — the incident class.",
+    "executable": "xargs",
+    "argv": ["dirname", "/project/my project/file.txt"],
+    "preTokenized": false,
+    "expectedCommandClass": "xargs",
+    "expectedConfidence": "partial",
+    "expectedDangerousTarget": "/project/my",
+    "expectedWarningContains": "splits to"
+  },
+  {
+    "_description": "xargs dirname with -0 flag — space is not a delimiter.",
+    "executable": "xargs",
+    "argv": ["-0", "dirname", "/project/my project/file.txt"],
+    "preTokenized": false,
+    "expectedCommandClass": "xargs",
+    "expectedConfidence": "resolved",
+    "expectedTarget": "/project/my project",
+    "expectedWarningContains": null
+  },
+  {
+    "_description": "xargs with unsupported sub-command bash.",
+    "executable": "xargs",
+    "argv": ["bash", "-c", "rm {}"],
+    "preTokenized": false,
+    "expectedCommandClass": "unsupported",
+    "expectedConfidence": "unsupported",
+    "expectedSupported": false
+  },
+  {
+    "_description": "rm with path traversal — normalizes to dangerous path.",
+    "executable": "/bin/rm",
+    "argv": ["-rf", "/project/src/../../etc/passwd"],
+    "preTokenized": false,
+    "expectedCommandClass": "remove",
+    "expectedConfidence": "resolved",
+    "expectedNormalizedTarget": "/etc/passwd"
+  },
+  {
+    "_description": "rm with glob pattern — partial confidence.",
+    "executable": "rm",
+    "argv": ["/project/src/*.rs"],
+    "preTokenized": false,
+    "expectedCommandClass": "remove",
+    "expectedConfidence": "partial",
+    "expectedProvenance": "glob"
+  },
+  {
+    "_description": "rm with null byte — partial confidence with warning.",
+    "executable": "rm",
+    "argv": ["/project/src/main.rs\u0000/etc/shadow"],
+    "preTokenized": false,
+    "expectedCommandClass": "remove",
+    "expectedConfidence": "partial",
+    "expectedWarningContains": "null byte"
+  },
+  {
+    "_description": "bash is unsupported by the resolver.",
+    "executable": "bash",
+    "argv": ["-c", "rm -rf /"],
+    "preTokenized": false,
+    "expectedCommandClass": "unsupported",
+    "expectedConfidence": "unsupported",
+    "expectedSupported": false
+  },
+  {
+    "_description": "find is unsupported by the resolver.",
+    "executable": "find",
+    "argv": ["/project", "-name", "*.rs"],
+    "preTokenized": false,
+    "expectedCommandClass": "unsupported",
+    "expectedConfidence": "unsupported",
+    "expectedSupported": false
+  }
+]

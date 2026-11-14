@@ -1,13 +1,7 @@
 //! Fusebox binary entry point.
 //!
 //! Subcommand dispatch covers `version`, `capabilities`, `help`, `proxy`,
-//! `init`, and `run`.
-//!
-//! - `proxy`: launch a child MCP server and relay newline-delimited or
-//!   Content-Length JSON-RPC frames bidirectionally.
-//! - `init`: write a default `.fusebox/policy.json` in the current directory.
-//! - `run`: evaluate a command against the policy, apply OS confinement, and
-//!   execute with a receipt written to stdout (or the journal).
+//! `init`, `run`, and `policy`.
 
 use std::process::ExitCode;
 use std::time::Duration;
@@ -35,9 +29,10 @@ fn main() -> ExitCode {
         Some("proxy") => run_proxy_command(&args),
         Some("init") => run_init_command(&args),
         Some("run") => run_run_command(&args),
+        Some("policy") => run_policy_command(&args),
         Some(other) => {
             eprintln!("fusebox: unknown subcommand '{other}'");
-            eprintln!("Use 'fusebox --help' to see available commands.");
+            eprintln!("Use 'fusebox --help' for usage information.");
             ExitCode::from(1)
         }
         None => {
@@ -47,456 +42,18 @@ fn main() -> ExitCode {
     }
 }
 
-// ── fusebox init ──────────────────────────────────────────────────────────────
-
-/// Execute `fusebox init [--overwrite] [--workspace <dir>]`.
-///
-/// Creates `.fusebox/policy.json` with conservative defaults.
-fn run_init_command(args: &[String]) -> ExitCode {
-    let init_args = &args[2..];
-
-    if init_args.iter().any(|a| a == "--help" || a == "-h") {
-        println!("Usage: fusebox init [--overwrite] [--workspace <dir>]");
-        println!();
-        println!("Creates .fusebox/policy.json in the specified workspace (default: cwd).");
-        println!("Flags:");
-        println!("  --overwrite     Replace an existing policy file");
-        println!("  --workspace     Workspace directory (default: current directory)");
-        return ExitCode::SUCCESS;
-    }
-
-    let mut overwrite = false;
-    let mut workspace: Option<String> = None;
-    let mut i = 0;
-    while i < init_args.len() {
-        match init_args[i].as_str() {
-            "--overwrite" => {
-                overwrite = true;
-                i += 1;
-            }
-            "--workspace" => {
-                if i + 1 >= init_args.len() {
-                    eprintln!("fusebox init: missing value for --workspace");
-                    return ExitCode::from(1);
-                }
-                workspace = Some(init_args[i + 1].clone());
-                i += 2;
-            }
-            other => {
-                eprintln!("fusebox init: unknown flag '{other}'");
-                return ExitCode::from(1);
-            }
-        }
-    }
-
-    let workspace_dir = if let Some(w) = workspace {
-        std::path::PathBuf::from(w)
-    } else {
-        match std::env::current_dir() {
-            Ok(d) => d,
-            Err(e) => {
-                eprintln!("fusebox init: cannot determine working directory: {e}");
-                return ExitCode::from(1);
-            }
-        }
-    };
-
-    let contract = fusebox_core::intent_io::default_contract(&workspace_dir);
-
-    match fusebox_core::intent_io::write_policy(&workspace_dir, &contract, overwrite) {
-        Ok(path) => {
-            let output = serde_json::json!({
-                "status": "ok",
-                "policy_file": path.display().to_string(),
-                "workspace_roots": contract.workspace_roots,
-                "network_policy": contract.network_policy,
-                "approval_policy": contract.approval_policy,
-                "protected_roots": contract.protected_roots,
-            });
-            println!("{output}");
-            ExitCode::SUCCESS
-        }
-        Err(fusebox_core::intent_io::IntentIoError::AlreadyExists(p)) => {
-            let output = serde_json::json!({
-                "status": "error",
-                "code": "ALREADY_EXISTS",
-                "message": format!("policy file already exists: {}; use --overwrite to replace it", p.display()),
-            });
-            eprintln!("{output}");
-            ExitCode::from(1)
-        }
-        Err(e) => {
-            let output = serde_json::json!({
-                "status": "error",
-                "code": "IO_ERROR",
-                "message": e.to_string(),
-            });
-            eprintln!("{output}");
-            ExitCode::from(1)
-        }
-    }
-}
-
-// ── fusebox run ───────────────────────────────────────────────────────────────
-
-/// Execute `fusebox run [--allow-escalate] [--no-confinement] -- <executable> [args...]`.
-///
-/// Loads `.fusebox/policy.json`, evaluates the command against the policy,
-/// applies Landlock confinement (Linux only), executes the child, and emits
-/// a receipt JSON to stdout.
-fn run_run_command(args: &[String]) -> ExitCode {
-    // Find `--` separator.
-    let sep_pos = args.iter().position(|a| a == "--");
-    let (run_flags, child_args): (&[String], &[String]) = match sep_pos {
-        Some(pos) => (&args[2..pos], &args[pos + 1..]),
-        None => {
-            if args.iter().any(|a| a == "--help" || a == "-h") {
-                print_run_help();
-                return ExitCode::SUCCESS;
-            }
-            eprintln!("fusebox run: missing '--' separator");
-            eprintln!("Usage: fusebox run [flags] -- <executable> [args...]");
-            return ExitCode::from(1);
-        }
-    };
-
-    if run_flags.iter().any(|a| a == "--help" || a == "-h") {
-        print_run_help();
-        return ExitCode::SUCCESS;
-    }
-
-    if child_args.is_empty() {
-        eprintln!("fusebox run: no executable specified after '--'");
-        return ExitCode::from(1);
-    }
-
-    let mut allow_escalate = false;
-    let mut no_confinement = false;
-    let mut timeout_ms: Option<u64> = None;
-
-    let mut i = 0;
-    while i < run_flags.len() {
-        match run_flags[i].as_str() {
-            "--allow-escalate" => {
-                allow_escalate = true;
-                i += 1;
-            }
-            "--no-confinement" => {
-                no_confinement = true;
-                i += 1;
-            }
-            "--timeout" => {
-                if i + 1 >= run_flags.len() {
-                    eprintln!("fusebox run: missing value for --timeout");
-                    return ExitCode::from(1);
-                }
-                match run_flags[i + 1].parse::<u64>() {
-                    Ok(ms) => timeout_ms = Some(ms),
-                    Err(_) => {
-                        eprintln!("fusebox run: invalid milliseconds for --timeout");
-                        return ExitCode::from(1);
-                    }
-                }
-                i += 2;
-            }
-            other => {
-                eprintln!("fusebox run: unknown flag '{other}'");
-                return ExitCode::from(1);
-            }
-        }
-    }
-
-    let executable = child_args[0].clone();
-    let argv: Vec<String> = child_args[1..].to_vec();
-
-    let cwd = match std::env::current_dir() {
-        Ok(d) => d,
-        Err(e) => {
-            eprintln!("fusebox run: cannot determine working directory: {e}");
-            return ExitCode::from(1);
-        }
-    };
-
-    // Load policy.
-    let contract = match fusebox_core::intent_io::read_policy(&cwd) {
-        Ok(c) => c,
-        Err(e) => {
-            let output = serde_json::json!({
-                "status": "error",
-                "code": "POLICY_NOT_FOUND",
-                "message": format!("cannot read policy: {e}; run 'fusebox init' first"),
-            });
-            eprintln!("{output}");
-            return ExitCode::from(1);
-        }
-    };
-
-    // Build exec request.
-    let session_id = contract.session_id.clone();
-    let request = fusebox_core::contracts::ExecRequest {
-        protocol_version: fusebox_core::contracts::SCHEMA_VERSION.to_string(),
-        request_id: format!("req-{}", std::process::id()),
-        session_id,
-        executable: executable.clone(),
-        argv: argv.clone(),
-        cwd: cwd.to_string_lossy().to_string(),
-        env_allowlist: vec![],
-        timeout_ms,
-        requested_capabilities: vec![],
-    };
-
-    // Policy dry-run.
-    let (decision, resolution) = fusebox_core::policy::policy_dry_run(&request, &contract);
-
-    use fusebox_core::contracts::Verdict;
-    let verdict_ok = matches!(decision.verdict, Verdict::Allow | Verdict::Log)
-        || (allow_escalate && matches!(decision.verdict, Verdict::Escalate));
-
-    if !verdict_ok {
-        // Emit denied receipt.
-        let rec = build_denied_receipt(&request, &decision, &cwd.to_string_lossy());
-        let output = serde_json::json!({
-            "status": "denied",
-            "verdict": decision.verdict,
-            "reason_code": decision.reason_code,
-            "predicted_targets": decision.predicted_targets,
-            "resolution_warnings": resolution.warnings,
-            "receipt": rec,
-        });
-        println!("{output}");
-        return ExitCode::from(1);
-    }
-
-    // Probe confinement.
-    let probe = fusebox_core::landlock::probe_landlock();
-    let allow_writes = !contract.write_roots.is_empty();
-
-    // Enforce confinement (Linux only).
-    let (confinement_applied, confinement_error) = if no_confinement {
-        (false, None)
-    } else {
-        match probe.abi {
-            fusebox_core::landlock::LandlockAbi::Version(_) => {
-                let rules = fusebox_core::landlock::workspace_ruleset(
-                    contract
-                        .workspace_roots
-                        .first()
-                        .map(String::as_str)
-                        .unwrap_or("/"),
-                    allow_writes,
-                );
-                match fusebox_core::landlock::apply_ruleset(&rules, &probe, false) {
-                    Ok(()) => (true, None),
-                    Err(e) => {
-                        // Fail closed: if confinement was expected and fails, deny.
-                        eprintln!("fusebox run: confinement failed: {e}");
-                        return ExitCode::from(1);
-                    }
-                }
-            }
-            fusebox_core::landlock::LandlockAbi::Unavailable => {
-                // Not a Linux kernel with Landlock — document but don't block.
-                // The execution still proceeds; the receipt records no confinement.
-                eprintln!(
-                    "fusebox run: [warning] Landlock not available on this kernel; running without filesystem confinement"
-                );
-                (false, Some("Landlock unavailable".to_string()))
-            }
-        }
-    };
-
-    let enforcement_record = fusebox_core::landlock::make_enforcement_record(
-        &probe,
-        confinement_applied,
-        confinement_error
-            .as_deref()
-            .map(|e| fusebox_core::landlock::LandlockError::OsError(e.to_string()))
-            .as_ref(),
-    );
-
-    // Execute the child.
-    use std::time::Instant;
-    let start = Instant::now();
-
-    let mut cmd = std::process::Command::new(&executable);
-    cmd.args(&argv);
-    cmd.current_dir(&cwd);
-    cmd.env_clear();
-
-    // Allow only explicitly listed env vars.
-    for key in &contract.allowed_command_classes {
-        if let Ok(val) = std::env::var(key) {
-            cmd.env(key, val);
-        }
-    }
-
-    let (exit_code, state) = match cmd.status() {
-        Ok(status) => {
-            let code = status.code().unwrap_or(1);
-            (Some(code), fusebox_core::receipt::ProcessState::Completed)
-        }
-        Err(e) => {
-            eprintln!("fusebox run: failed to start child process: {e}");
-            (None, fusebox_core::receipt::ProcessState::Failed)
-        }
-    };
-
-    let duration_ms = start.elapsed().as_millis() as u64;
-
-    // Build and emit receipt.
-    use fusebox_core::contracts::SCHEMA_VERSION;
-    use fusebox_core::receipt::{CommandReceipt, OutputDigests, ProcessOutcome, RequestSummary};
-    use fusebox_core::verify::hash_receipt;
-
-    let receipt_id = format!("rcpt-{}", std::process::id());
-    let previous_hash = String::new(); // journal-less single-receipt mode
-
-    let mut receipt = CommandReceipt {
-        schema_version: SCHEMA_VERSION.to_string(),
-        receipt_id,
-        sequence: 0,
-        recorded_at: current_timestamp(),
-        session_id: request.session_id.clone(),
-        request_id: request.request_id.clone(),
-        request_summary: RequestSummary {
-            executable_name: std::path::Path::new(&executable)
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or(&executable)
-                .to_string(),
-            argc: argv.len(),
-            cwd: cwd.to_string_lossy().to_string(),
-        },
-        policy_decision: decision.clone(),
-        enforcement: enforcement_record,
-        process_outcome: ProcessOutcome {
-            state: state.clone(),
-            exit_code,
-            duration_ms: Some(duration_ms),
-            signal: None,
-        },
-        output_digests: Some(OutputDigests {
-            stdout_sha256: None,
-            stderr_sha256: None,
-            stdout_truncated: false,
-            stderr_truncated: false,
-        }),
-        previous_hash,
-        record_hash: String::new(),
-    };
-
-    receipt.record_hash = match hash_receipt(&receipt) {
-        Ok(h) => h,
-        Err(e) => {
-            eprintln!("fusebox run: failed to hash receipt: {e}");
-            "HASH_ERROR".to_string()
-        }
-    };
-
-    let exit_ok = exit_code.map(|c| c == 0).unwrap_or(false);
-    let output = serde_json::json!({
-        "status": if exit_ok { "ok" } else { "failed" },
-        "verdict": decision.verdict,
-        "confinement_applied": confinement_applied,
-        "predicted_targets": decision.predicted_targets,
-        "resolution_warnings": resolution.warnings,
-        "exit_code": exit_code,
-        "duration_ms": duration_ms,
-        "receipt": receipt,
-    });
-    println!("{output}");
-
-    match exit_code {
-        Some(0) => ExitCode::SUCCESS,
-        Some(code) => ExitCode::from(code.clamp(1, 125) as u8),
-        None => ExitCode::from(1),
-    }
-}
-
-fn build_denied_receipt(
-    request: &fusebox_core::contracts::ExecRequest,
-    decision: &fusebox_core::contracts::PolicyDecision,
-    cwd: &str,
-) -> serde_json::Value {
-    use fusebox_core::receipt::denied_receipt;
-    use fusebox_core::verify::hash_receipt;
-
-    let executable_name = std::path::Path::new(&request.executable)
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or(&request.executable)
-        .to_string();
-
-    let mut receipt = denied_receipt(
-        format!("rcpt-denied-{}", std::process::id()),
-        0,
-        current_timestamp(),
-        request.session_id.clone(),
-        request.request_id.clone(),
-        executable_name,
-        request.argv.len(),
-        cwd,
-        decision.clone(),
-        "",
-    );
-    receipt.record_hash = hash_receipt(&receipt).unwrap_or_default();
-    serde_json::to_value(&receipt).unwrap_or_default()
-}
-
-fn current_timestamp() -> String {
-    // Produce an ISO-8601-like timestamp without external dependencies.
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let secs = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-    // Format as YYYY-MM-DDTHH:MM:SSZ (approximate — no leap seconds).
-    let s = secs;
-    let sec = s % 60;
-    let min = (s / 60) % 60;
-    let hour = (s / 3600) % 24;
-    let days_since_epoch = s / 86400;
-    // Compute year/month/day from days since 1970-01-01 (Gregorian).
-    let (year, month, day) = days_to_ymd(days_since_epoch);
-    format!("{year:04}-{month:02}-{day:02}T{hour:02}:{min:02}:{sec:02}Z")
-}
-
-fn days_to_ymd(days: u64) -> (u64, u64, u64) {
-    // Proleptic Gregorian calendar from days since 1970-01-01.
-    // Algorithm from http://howardhinnant.github.io/date_algorithms.html
-    let z = days + 719468;
-    let era = z / 146097;
-    let doe = z % 146097;
-    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
-    let y = yoe + era * 400;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 };
-    let y = if m <= 2 { y + 1 } else { y };
-    (y, m, d)
-}
-
-fn print_run_help() {
-    println!("Usage: fusebox run [flags] -- <executable> [args...]");
-    println!();
-    println!("Evaluate a command against the active policy and execute it supervised.");
-    println!("Requires .fusebox/policy.json in the current directory (run 'fusebox init' first).");
-    println!();
-    println!("Flags:");
-    println!("  --allow-escalate    Allow execution when verdict is 'escalate'");
-    println!("  --no-confinement    Skip Landlock confinement (for diagnostics only)");
-    println!("  --timeout <ms>      Kill child after <ms> milliseconds");
-}
-
-// ── fusebox proxy ─────────────────────────────────────────────────────────────
-
 /// Execute `fusebox proxy [--framing <mode>] [--shutdown-timeout <secs>] [--grace-period <secs>] -- <executable> [args...]`.
+///
+/// Arguments before `--` are treated as proxy flags; the executable and its
+/// arguments follow after `--`. Using an explicit `--` separator makes it
+/// unambiguous that the remaining tokens belong to the child process, not to Fusebox.
 fn run_proxy_command(args: &[String]) -> ExitCode {
+    // Find the `--` separator.
     let sep_pos = args.iter().position(|a| a == "--");
     let (proxy_flags, child_args): (&[String], &[String]) = match sep_pos {
         Some(pos) => (&args[2..pos], &args[pos + 1..]),
         None => {
+            // If --help or -h was passed anywhere in proxy invocation
             if args
                 .iter()
                 .any(|a| a == "--help" || a == "-h" || a == "help")
@@ -594,6 +151,7 @@ fn run_proxy_command(args: &[String]) -> ExitCode {
     let executable = child_args[0].clone();
     let argv = child_args[1..].to_vec();
 
+    // Validate: executable must not be empty.
     if executable.is_empty() {
         eprintln!("fusebox proxy: child executable must not be empty");
         return ExitCode::from(1);
@@ -615,6 +173,7 @@ fn run_proxy_command(args: &[String]) -> ExitCode {
         .map(String::from)
         .collect();
 
+    // Build a Tokio runtime for the async proxy.
     let runtime = match tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -626,6 +185,7 @@ fn run_proxy_command(args: &[String]) -> ExitCode {
         }
     };
 
+    // Install host signal interception (Ctrl+C on all platforms, SIGTERM on Unix)
     let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
     runtime.spawn(async move {
         #[cfg(unix)]
@@ -687,8 +247,6 @@ fn run_proxy_command(args: &[String]) -> ExitCode {
     }
 }
 
-// ── print helpers ─────────────────────────────────────────────────────────────
-
 fn print_version() {
     let output = serde_json::json!({
         "name": "fusebox",
@@ -708,8 +266,10 @@ fn print_capabilities() {
         "name": "fusebox",
         "version": env!("CARGO_PKG_VERSION"),
         "schema_version": fusebox_core::contracts::SCHEMA_VERSION,
-        "capabilities": ["version", "capabilities", "proxy", "init", "run"],
+        "capabilities": ["version", "capabilities", "proxy", "init", "run", "policy"],
+        "planned": ["receipts", "verify"],
         "confinement": confinement,
+        "confinement_note": probe.note,
         "platform": std::env::consts::OS,
         "arch": std::env::consts::ARCH,
     });
@@ -722,12 +282,463 @@ fn print_help() {
     println!("Usage: fusebox <command> [options]");
     println!();
     println!("Commands:");
+    println!("  init            Initialize a workspace intent/policy file");
+    println!("  run             Run a supervised command");
+    println!("  proxy           Proxy an MCP server over stdio");
+    println!("  policy          Evaluate a policy dry-run");
     println!("  version         Print version information");
     println!("  capabilities    Print supported capabilities and confinement status");
-    println!("  init            Create .fusebox/policy.json in the current workspace");
-    println!("  run             Evaluate a command against policy and run it supervised");
-    println!("  proxy           Proxy an MCP server over stdio");
     println!("  help, --help    Show this help");
     println!();
-    println!("Run 'fusebox <command> --help' for command-specific usage.");
+    println!("Init usage:");
+    println!("  fusebox init [--session-id <id>] [--overwrite] [<workspace-dir>]");
+    println!();
+    println!("Run usage:");
+    println!(
+        "  fusebox run [--allow-escalate] [--no-confinement | --require-confinement] -- <executable> [args...]"
+    );
+    println!();
+    println!("Run flags:");
+    println!("  --allow-escalate       Allow execution when the verdict is 'escalate'");
+    println!("  --no-confinement       Do not request OS confinement (diagnostics only)");
+    println!("  --require-confinement  Refuse to launch when OS confinement is unavailable");
+    println!("  --timeout <ms>         Kill the child after <ms> milliseconds");
+    println!();
+    println!("Policy usage:");
+    println!("  fusebox policy dry-run --executable <exe> [--argv <arg>...] [--cwd <dir>]");
+    println!("  fusebox policy dry-run --json <request-json>");
+    println!();
+    println!("Proxy usage:");
+    println!("  fusebox proxy [options] -- <server> [args...]");
+    println!();
+    println!("Proxy options:");
+    println!("  --framing <mode>           Framing mode: 'newline' (default) or 'content-length'");
+    println!("  --shutdown-timeout <secs>  Total shutdown timeout in seconds (default: 10)");
+    println!(
+        "  --grace-period <secs>      Grace period after stdin EOF before SIGTERM (default: 2)"
+    );
+}
+
+// ── fusebox init ──────────────────────────────────────────────────────────────
+
+/// Execute `fusebox init [--session-id <id>] [--overwrite] [<workspace-dir>]`.
+fn run_init_command(args: &[String]) -> ExitCode {
+    use fusebox_core::init::{init, InitOptions};
+
+    let flags = &args[2..];
+    let mut session_id = uuid_v4();
+    let mut overwrite = false;
+    let mut workspace_dir: Option<String> = None;
+
+    let mut i = 0;
+    while i < flags.len() {
+        match flags[i].as_str() {
+            "--session-id" => {
+                if i + 1 >= flags.len() {
+                    eprintln!("fusebox init: missing value for --session-id");
+                    return ExitCode::from(1);
+                }
+                session_id = flags[i + 1].clone();
+                i += 2;
+            }
+            "--overwrite" => {
+                overwrite = true;
+                i += 1;
+            }
+            "--help" | "-h" => {
+                println!("Usage: fusebox init [--session-id <id>] [--overwrite] [<workspace-dir>]");
+                return ExitCode::SUCCESS;
+            }
+            other if !other.starts_with('-') => {
+                workspace_dir = Some(other.to_string());
+                i += 1;
+            }
+            other => {
+                eprintln!("fusebox init: unknown flag '{other}'");
+                return ExitCode::from(1);
+            }
+        }
+    }
+
+    let workspace_dir = workspace_dir.unwrap_or_else(|| {
+        std::env::current_dir()
+            .map(|d| d.to_string_lossy().to_string())
+            .unwrap_or_else(|_| ".".to_string())
+    });
+
+    let options = InitOptions {
+        workspace_dir: workspace_dir.clone(),
+        session_id,
+        overwrite,
+    };
+
+    match init(&options) {
+        Ok(result) => {
+            let output = serde_json::json!({
+                "status": "ok",
+                "policy_path": result.policy_path,
+                "session_id": result.contract.session_id,
+                "overwritten": result.overwritten,
+                "policy_hash": result.contract.policy_hash,
+            });
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&output).unwrap_or_default()
+            );
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("fusebox init: {e}");
+            ExitCode::from(1)
+        }
+    }
+}
+
+// ── fusebox run ───────────────────────────────────────────────────────────────
+
+/// Execute `fusebox run [flags] -- <executable> [args...]`.
+fn run_run_command(args: &[String]) -> ExitCode {
+    use fusebox_core::contracts::ExecRequest;
+    use fusebox_core::init::load_policy;
+    use fusebox_core::run::{run, Confinement, ConfinementScope, RunConfig};
+
+    const USAGE: &str =
+        "Usage: fusebox run [--allow-escalate] [--no-confinement | --require-confinement] -- <executable> [args...]";
+
+    // Find `--` separator.
+    let sep_pos = args.iter().position(|a| a == "--");
+    let (run_flags, child_args): (&[String], &[String]) = match sep_pos {
+        Some(pos) => (&args[2..pos], &args[pos + 1..]),
+        None => {
+            eprintln!("fusebox run: missing '--' separator");
+            eprintln!("{USAGE}");
+            return ExitCode::from(1);
+        }
+    };
+
+    if child_args.is_empty() {
+        eprintln!("fusebox run: no executable specified after '--'");
+        return ExitCode::from(1);
+    }
+
+    let mut allow_escalate = false;
+    let mut confinement_mode: Option<&str> = None;
+    let mut timeout_override = None;
+    let mut i = 0;
+    while i < run_flags.len() {
+        match run_flags[i].as_str() {
+            "--allow-escalate" => allow_escalate = true,
+            "--no-confinement" => confinement_mode = Some("off"),
+            "--require-confinement" => confinement_mode = Some("required"),
+            "--timeout" => {
+                if i + 1 >= run_flags.len() {
+                    eprintln!("fusebox run: missing value for --timeout");
+                    return ExitCode::from(1);
+                }
+                match run_flags[i + 1].parse::<u64>() {
+                    Ok(ms) => timeout_override = Some(Duration::from_millis(ms)),
+                    Err(_) => {
+                        eprintln!("fusebox run: invalid milliseconds for --timeout");
+                        return ExitCode::from(1);
+                    }
+                }
+                i += 1;
+            }
+            "--help" | "-h" => {
+                println!("{USAGE}");
+                return ExitCode::SUCCESS;
+            }
+            other => {
+                eprintln!("fusebox run: unknown flag '{other}'");
+                return ExitCode::from(1);
+            }
+        }
+        i += 1;
+    }
+
+    let executable = child_args[0].clone();
+    let argv = child_args[1..].to_vec();
+
+    let cwd = match std::env::current_dir() {
+        Ok(d) => d.to_string_lossy().to_string(),
+        Err(e) => {
+            eprintln!("fusebox run: cannot determine working directory: {e}");
+            return ExitCode::from(1);
+        }
+    };
+
+    // Load the policy from the workspace.
+    let contract = match load_policy(&cwd) {
+        Ok(Some(c)) => c,
+        Ok(None) => {
+            eprintln!("fusebox run: no policy file found in '{cwd}/.fusebox/policy.json'");
+            eprintln!("Run 'fusebox init' first to create a workspace policy.");
+            return ExitCode::from(1);
+        }
+        Err(e) => {
+            eprintln!("fusebox run: failed to load policy: {e}");
+            return ExitCode::from(1);
+        }
+    };
+
+    let request = ExecRequest {
+        protocol_version: fusebox_core::contracts::SCHEMA_VERSION.to_string(),
+        request_id: uuid_v4(),
+        session_id: contract.session_id.clone(),
+        executable,
+        argv,
+        cwd: cwd.clone(),
+        env_allowlist: vec![],
+        timeout_ms: None,
+        requested_capabilities: vec![],
+    };
+
+    // Confinement applies to the workspace the policy declares, not to whatever
+    // directory the caller happens to be in.
+    let scope = ConfinementScope {
+        workspace_root: contract
+            .workspace_roots
+            .first()
+            .cloned()
+            .unwrap_or_else(|| cwd.clone()),
+        allow_writes: !contract.write_roots.is_empty(),
+    };
+    let confinement = match confinement_mode {
+        Some("off") => Confinement::Off,
+        Some("required") => Confinement::Required(scope),
+        _ => Confinement::BestEffort(scope),
+    };
+
+    let config = RunConfig {
+        allow_escalate,
+        capture_output: false,
+        timeout_override,
+        confinement,
+    };
+
+    match run(&request, &contract, uuid_v4(), 0, "", &config) {
+        Ok(result) => {
+            let output = serde_json::json!({
+                "status": "ok",
+                "verdict": format!("{:?}", result.policy_decision.verdict).to_lowercase(),
+                "receipt_id": result.receipt.receipt_id,
+                "exit_code": result.process_outcome.exit_code,
+                "duration_ms": result.process_outcome.duration_ms,
+                "enforcement": result.receipt.enforcement,
+            });
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&output).unwrap_or_default()
+            );
+            match result.process_outcome.exit_code {
+                Some(0) | None => ExitCode::SUCCESS,
+                Some(code) => ExitCode::from(code.clamp(1, 125) as u8),
+            }
+        }
+        Err(fusebox_core::run::RunError::Denied(decision, _resolution)) => {
+            let output = serde_json::json!({
+                "status": "denied",
+                "verdict": "deny",
+                "reason_code": decision.reason_code,
+                "predicted_targets": decision.predicted_targets,
+                "user_action_required": decision.user_action_required,
+            });
+            eprintln!(
+                "{}",
+                serde_json::to_string_pretty(&output).unwrap_or_default()
+            );
+            ExitCode::from(1)
+        }
+        Err(fusebox_core::run::RunError::ConfinementUnavailable(reason)) => {
+            let output = serde_json::json!({
+                "status": "confinement_unavailable",
+                "code": "CONFINEMENT_UNAVAILABLE",
+                "message": reason,
+            });
+            eprintln!(
+                "{}",
+                serde_json::to_string_pretty(&output).unwrap_or_default()
+            );
+            ExitCode::from(1)
+        }
+        Err(e) => {
+            eprintln!("fusebox run: {e}");
+            ExitCode::from(1)
+        }
+    }
+}
+
+// ── fusebox policy ────────────────────────────────────────────────────────────
+
+/// Execute `fusebox policy dry-run ...`.
+fn run_policy_command(args: &[String]) -> ExitCode {
+    let subcommand = args.get(2).map(String::as_str);
+
+    match subcommand {
+        Some("dry-run") => run_policy_dry_run_command(&args[3..]),
+        Some("--help") | Some("-h") | Some("help") | None => {
+            println!(
+                "Usage: fusebox policy dry-run --executable <exe> [--argv <arg>...] [--cwd <dir>]"
+            );
+            println!("       fusebox policy dry-run --json <request-json>");
+            ExitCode::SUCCESS
+        }
+        Some(other) => {
+            eprintln!("fusebox policy: unknown subcommand '{other}'");
+            eprintln!("Use 'fusebox policy dry-run ...' or 'fusebox policy --help'");
+            ExitCode::from(1)
+        }
+    }
+}
+
+fn run_policy_dry_run_command(flags: &[String]) -> ExitCode {
+    use fusebox_core::contracts::ExecRequest;
+    use fusebox_core::init::load_policy;
+    use fusebox_core::policy::policy_dry_run;
+
+    let mut executable: Option<String> = None;
+    let mut argv: Vec<String> = Vec::new();
+    let mut json_input: Option<String> = None;
+    let mut cwd_override: Option<String> = None;
+
+    let mut i = 0;
+    while i < flags.len() {
+        match flags[i].as_str() {
+            "--executable" => {
+                if i + 1 >= flags.len() {
+                    eprintln!("fusebox policy dry-run: missing value for --executable");
+                    return ExitCode::from(1);
+                }
+                executable = Some(flags[i + 1].clone());
+                i += 2;
+            }
+            "--argv" => {
+                if i + 1 >= flags.len() {
+                    eprintln!("fusebox policy dry-run: missing value for --argv");
+                    return ExitCode::from(1);
+                }
+                argv.push(flags[i + 1].clone());
+                i += 2;
+            }
+            "--cwd" => {
+                if i + 1 >= flags.len() {
+                    eprintln!("fusebox policy dry-run: missing value for --cwd");
+                    return ExitCode::from(1);
+                }
+                cwd_override = Some(flags[i + 1].clone());
+                i += 2;
+            }
+            "--json" => {
+                if i + 1 >= flags.len() {
+                    eprintln!("fusebox policy dry-run: missing value for --json");
+                    return ExitCode::from(1);
+                }
+                json_input = Some(flags[i + 1].clone());
+                i += 2;
+            }
+            other => {
+                eprintln!("fusebox policy dry-run: unknown flag '{other}'");
+                return ExitCode::from(1);
+            }
+        }
+    }
+
+    let cwd = cwd_override.unwrap_or_else(|| {
+        std::env::current_dir()
+            .map(|d| d.to_string_lossy().to_string())
+            .unwrap_or_else(|_| ".".to_string())
+    });
+
+    let contract = match load_policy(&cwd) {
+        Ok(Some(c)) => c,
+        Ok(None) => {
+            eprintln!("fusebox policy: no policy file found in '{cwd}/.fusebox/policy.json'");
+            eprintln!("Run 'fusebox init' first.");
+            return ExitCode::from(1);
+        }
+        Err(e) => {
+            eprintln!("fusebox policy: failed to load policy: {e}");
+            return ExitCode::from(1);
+        }
+    };
+
+    let request: ExecRequest = if let Some(json) = json_input {
+        match serde_json::from_str(&json) {
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!("fusebox policy: failed to parse --json request: {e}");
+                return ExitCode::from(1);
+            }
+        }
+    } else {
+        match executable {
+            None => {
+                eprintln!("fusebox policy dry-run: --executable is required");
+                return ExitCode::from(1);
+            }
+            Some(exe) => ExecRequest {
+                protocol_version: fusebox_core::contracts::SCHEMA_VERSION.to_string(),
+                request_id: uuid_v4(),
+                session_id: contract.session_id.clone(),
+                executable: exe,
+                argv,
+                cwd: cwd.clone(),
+                env_allowlist: vec![],
+                timeout_ms: None,
+                requested_capabilities: vec![],
+            },
+        }
+    };
+
+    let (decision, resolution) = policy_dry_run(&request, &contract);
+
+    let output = serde_json::json!({
+        "verdict": format!("{:?}", decision.verdict).to_lowercase(),
+        "reason_code": decision.reason_code,
+        "rule_id": decision.rule_id,
+        "predicted_targets": decision.predicted_targets,
+        "resolution_status": format!("{:?}", decision.resolution_status).to_lowercase(),
+        "user_action_required": decision.user_action_required,
+        "policy_hash": decision.policy_hash,
+        "resolver": {
+            "supported": resolution.supported,
+            "confidence": format!("{:?}", resolution.confidence).to_lowercase(),
+            "command_class": format!("{:?}", resolution.command_class).to_lowercase(),
+            "warnings": resolution.warnings,
+        }
+    });
+
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&output).unwrap_or_default()
+    );
+
+    // Exit code reflects the verdict: 0 = allow/log, 1 = deny/escalate/unsupported.
+    match decision.verdict {
+        fusebox_core::contracts::Verdict::Allow | fusebox_core::contracts::Verdict::Log => {
+            ExitCode::SUCCESS
+        }
+        _ => ExitCode::from(1),
+    }
+}
+
+// ── Utilities ──────────────────────────────────────────────────────────────────
+
+/// Generate a simple pseudo-random session/request ID without external dependencies.
+/// Uses process ID, thread ID, and timestamp for reasonable uniqueness on a single machine.
+fn uuid_v4() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    // Use u128 throughout to avoid mixed-type arithmetic.
+    let t: u128 = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let pid = std::process::id() as u128;
+    // Mix entropy sources into a hex string formatted as UUID v4 shape.
+    let a = (t & 0xFFFF_FFFF) as u32;
+    let b = ((t >> 32) & 0xFFFF) as u16;
+    let c = (0x4000 | ((t >> 48) & 0x0FFF)) as u16; // version 4
+    let d = (0x8000 | ((pid ^ (t >> 60)) & 0x3FFF)) as u16; // variant
+    let e = ((t >> 16) ^ (pid * 0x9e37)) & 0xFFFF_FFFF_FFFF;
+    format!("{a:08x}-{b:04x}-{c:04x}-{d:04x}-{e:012x}")
 }

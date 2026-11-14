@@ -7,7 +7,7 @@
 //! | Platform | Support |
 //! |---|---|
 //! | Linux kernel ≥ 5.13 (Landlock ABI v1+) | Full filesystem confinement |
-//! | Linux kernel < 5.13 | `LandlockStatus::Unavailable` — fail closed |
+//! | Linux kernel < 5.13 | `LandlockAbi::Unavailable` — `--require-confinement` fails closed |
 //! | macOS | Hook/wrapper only — no kernel confinement |
 //! | Windows | Out of scope |
 //!
