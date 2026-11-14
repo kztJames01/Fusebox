@@ -1,0 +1,67 @@
+[
+  {
+    "_description": "Empty executable — must produce INVALID_EXECUTABLE deny.",
+    "executable": "",
+    "argv": [],
+    "cwd": "/project",
+    "expectedVerdict": "deny",
+    "expectedReasonCode": "INVALID_EXECUTABLE"
+  },
+  {
+    "_description": "Null byte in argv — must produce INVALID_PATH deny.",
+    "executable": "/bin/cat",
+    "argv": ["/project/src/main.rs\u0000/etc/shadow"],
+    "cwd": "/project",
+    "expectedVerdict": "deny",
+    "expectedReasonCode": "INVALID_PATH"
+  },
+  {
+    "_description": "cwd outside workspace_roots — must produce CWD_OUTSIDE_WORKSPACE deny.",
+    "executable": "/usr/bin/cargo",
+    "argv": ["test"],
+    "cwd": "/tmp/attacker",
+    "expectedVerdict": "deny",
+    "expectedReasonCode": "CWD_OUTSIDE_WORKSPACE"
+  },
+  {
+    "_description": "rm targeting protected root — must produce PROTECTED_ROOT_WRITE deny.",
+    "executable": "/bin/rm",
+    "argv": ["/project/.fusebox/policy.json"],
+    "cwd": "/project",
+    "expectedVerdict": "deny",
+    "expectedReasonCode": "PROTECTED_ROOT_WRITE"
+  },
+  {
+    "_description": "rm targeting outside write root — must produce OUTSIDE_WRITE_ROOT deny.",
+    "executable": "/bin/rm",
+    "argv": ["-rf", "/tmp/evil"],
+    "cwd": "/project",
+    "expectedVerdict": "deny",
+    "expectedReasonCode": "OUTSIDE_WRITE_ROOT"
+  },
+  {
+    "_description": "Path traversal that escapes workspace — resolved to /etc/passwd then denied.",
+    "executable": "/bin/rm",
+    "argv": ["-rf", "/project/src/../../etc/passwd"],
+    "cwd": "/project",
+    "expectedVerdict": "deny",
+    "expectedReasonCode": "OUTSIDE_WRITE_ROOT",
+    "expectedResolvedTarget": "/etc/passwd"
+  },
+  {
+    "_description": "bash is unsupported — strict policy denies with UNSUPPORTED_COMMAND.",
+    "executable": "bash",
+    "argv": ["-c", "rm -rf /"],
+    "cwd": "/project",
+    "expectedVerdict": "deny",
+    "expectedReasonCode": "UNSUPPORTED_COMMAND"
+  },
+  {
+    "_description": "rm within write root — allow with WITHIN_SCOPE.",
+    "executable": "/bin/rm",
+    "argv": ["/project/src/old.rs"],
+    "cwd": "/project",
+    "expectedVerdict": "allow",
+    "expectedReasonCode": "WITHIN_SCOPE"
+  }
+]

@@ -32,6 +32,7 @@
     "typecheck": "tsc --noEmit",
     "rust:build": "cargo build --release --manifest-path rust/Cargo.toml",
     "rust:test": "cargo test --manifest-path rust/Cargo.toml",
+    "release:check": "node -e \"const p=require('./package.json');const required=['name','version','description','license','main','bin'];const missing=required.filter(k=>!p[k]);if(missing.length){console.error('release:check FAILED — missing fields: '+missing.join(', '));process.exit(1);}console.log('release:check passed');\"",
     "prepare": "npm run build",
     "prepublishOnly": "npm run build"
   },
